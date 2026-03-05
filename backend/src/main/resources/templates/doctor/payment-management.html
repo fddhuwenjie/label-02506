@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('费用管理')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: doctor-sidebar('payments')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">费用管理</h4>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-info-subtle text-dark" data-beijing-clock>北京时间 --</span>
+            <a th:href="@{/doctor/registrations}" class="btn btn-outline-secondary btn-sm">返回挂号管理</a>
+        </div>
+    </div>
+
+    <div th:if="${message}" class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i><span th:text="${message}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-circle me-2"></i><span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-calculator me-2"></i>费用核算</h6>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#calculateModal">
+                <i class="bi bi-plus-circle me-1"></i>新增费用
+            </button>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-0">
+                <i class="bi bi-info-circle me-1"></i>说明：开具处方时会自动生成药品费缴费单。如需录入挂号费、诊疗费或其他费用，请点击「新增费用」进行核算。
+            </p>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header bg-white">
+            <h6 class="mb-0">费用总览（已缴费 / 欠费 / 待缴费）</h6>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                <tr>
+                    <th>缴费单号</th>
+                    <th>病人</th>
+                    <th>类型</th>
+                    <th>应收</th>
+                    <th>实收</th>
+                    <th>剩余</th>
+                    <th>状态</th>
+                    <th>更新时间</th>
+                    <th>备注</th>
+                    <th style="width: 220px;">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="payment : ${allPayments}">
+                    <td th:text="${payment.paymentNo}"></td>
+                    <td th:text="${payment.patient.realName}"></td>
+                    <td th:text="${payment.feeTypeText}"></td>
+                    <td>¥<span th:text="${payment.totalAmount}"></span></td>
+                    <td>¥<span th:text="${payment.paidAmount}"></span></td>
+                    <td>¥<span th:text="${payment.totalAmount - payment.paidAmount}"></span></td>
+                    <td><span class="badge" th:classappend="'badge-status-' + ${payment.status}" th:text="${payment.statusText}"></span></td>
+                    <td th:text="${#temporals.format(payment.updateTime, 'yyyy-MM-dd HH:mm:ss')}"></td>
+                    <td th:text="${payment.remark ?: '-'}"></td>
+                    <td>
+                        <button th:if="${payment.status == 0 || payment.status == 2}" type="button" class="btn btn-sm btn-success"
+                                data-bs-toggle="modal" data-bs-target="#payModal"
+                                th:attr="data-payment-id=${payment.id},data-payment-no=${payment.paymentNo}">
+                            录入缴费
+                        </button>
+                        <button th:if="${payment.status == 0 || payment.status == 2}" type="button" class="btn btn-sm btn-outline-warning"
+                                data-bs-toggle="modal" data-bs-target="#arrearsModal"
+                                th:attr="data-payment-id=${payment.id},data-payment-no=${payment.paymentNo}">
+                            登记欠费
+                        </button>
+                        <span th:if="${payment.status == 1}" class="text-success">已完成</span>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(allPayments)}">
+                    <td colspan="10" class="text-center text-muted py-4">暂无费用记录</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="payForm" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">录入缴费</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">
+                        当前缴费单：<span id="payPaymentNo"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">缴费金额</label>
+                        <input type="number" name="paidAmount" class="form-control" min="0.01" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">缴费方式</label>
+                        <select name="paymentMethod" class="form-select" required>
+                            <option value="1">现金</option>
+                            <option value="2">微信</option>
+                            <option value="3">支付宝</option>
+                            <option value="4">银行卡</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-success">确认录入</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="arrearsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="arrearsForm" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">登记欠费</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning py-2">
+                        当前缴费单：<span id="arrearsPaymentNo"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">欠费说明</label>
+                        <textarea name="arrearsRemark" class="form-control" rows="3" maxlength="100"
+                                  placeholder="如：病人申请分期，下次复诊补缴" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">确认登记</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="calculateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form th:action="@{/doctor/payments/calculate}" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-calculator me-2"></i>核算费用</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small">
+                        <i class="bi bi-lightbulb me-1"></i>选择病人的挂号记录，录入对应费用类型和金额，系统将生成待缴费记录。
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">选择挂号记录 <span class="text-danger">*</span></label>
+                            <select name="registrationId" id="calcRegistrationId" class="form-select" required>
+                                <option value="">-- 请选择挂号记录 --</option>
+                            </select>
+                            <div class="form-text">仅显示今日及近期未完结的挂号</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">费用类型 <span class="text-danger">*</span></label>
+                            <select name="feeType" class="form-select" required>
+                                <option value="1">挂号费</option>
+                                <option value="2">诊疗费</option>
+                                <option value="3">药品费</option>
+                                <option value="4">其他费用</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">费用金额 <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">¥</span>
+                                <input type="number" name="totalAmount" class="form-control" min="0.01" step="0.01" placeholder="输入金额" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">备注说明</label>
+                            <input type="text" name="remark" class="form-control" maxlength="100" placeholder="可选，如：初诊费、加急费等">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>确认核算</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+<script th:inline="javascript">
+const payModal = document.getElementById('payModal');
+const arrearsModal = document.getElementById('arrearsModal');
+const calculateModal = document.getElementById('calculateModal');
+
+payModal.addEventListener('show.bs.modal', function (event) {
+    const trigger = event.relatedTarget;
+    const paymentId = trigger.getAttribute('data-payment-id');
+    const paymentNo = trigger.getAttribute('data-payment-no');
+    document.getElementById('payPaymentNo').textContent = paymentNo;
+    document.getElementById('payForm').action = '/doctor/payments/' + paymentId + '/pay';
+});
+
+arrearsModal.addEventListener('show.bs.modal', function (event) {
+    const trigger = event.relatedTarget;
+    const paymentId = trigger.getAttribute('data-payment-id');
+    const paymentNo = trigger.getAttribute('data-payment-no');
+    document.getElementById('arrearsPaymentNo').textContent = paymentNo;
+    document.getElementById('arrearsForm').action = '/doctor/payments/' + paymentId + '/arrears';
+});
+
+calculateModal.addEventListener('show.bs.modal', function (event) {
+    fetch('/doctor/payments/registrations-for-calc')
+        .then(res => res.json())
+        .then(data => {
+            const select = document.getElementById('calcRegistrationId');
+            select.innerHTML = '<option value="">-- 请选择挂号记录 --</option>';
+            if (data.success && data.data) {
+                data.data.forEach(reg => {
+                    const opt = document.createElement('option');
+                    opt.value = reg.id;
+                    opt.textContent = reg.patientName + ' - ' + reg.date + ' ' + reg.timePeriod + ' (' + reg.status + ')';
+                    select.appendChild(opt);
+                });
+            }
+        })
+        .catch(err => {
+            console.error('加载挂号记录失败', err);
+        });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('病历详情')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: patient-sidebar('records')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">病历详情</h4>
+        <a th:href="@{/patient/records}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>返回列表
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="text-muted">病历号</label>
+                    <p class="mb-0 fw-bold" th:text="${record.recordNo}"></p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="text-muted">就诊时间</label>
+                    <p class="mb-0" th:text="${#temporals.format(record.visitTime, 'yyyy-MM-dd HH:mm')}"></p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="text-muted">接诊医生</label>
+                    <p class="mb-0" th:text="${record.doctor.realName}"></p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="text-muted">诊断结果</label>
+                    <p class="mb-0 fw-bold text-primary" th:text="${record.diagnosis ?: '-'}"></p>
+                </div>
+                <div class="col-md-12 mb-3">
+                    <label class="text-muted">主诉</label>
+                    <p class="mb-0" th:text="${record.chiefComplaint ?: '-'}"></p>
+                </div>
+                <div class="col-md-12 mb-3">
+                    <label class="text-muted">现病史</label>
+                    <p class="mb-0" th:text="${record.presentIllness ?: '-'}"></p>
+                </div>
+                <div class="col-md-12 mb-3">
+                    <label class="text-muted">体格检查</label>
+                    <p class="mb-0" th:text="${record.physicalExam ?: '-'}"></p>
+                </div>
+                <div class="col-md-12 mb-3">
+                    <label class="text-muted">治疗方案</label>
+                    <p class="mb-0" th:text="${record.treatmentPlan ?: '-'}"></p>
+                </div>
+                <div class="col-md-12 mb-3">
+                    <label class="text-muted">医嘱</label>
+                    <p class="mb-0" th:text="${record.doctorAdvice ?: '-'}"></p>
+                </div>
+                <div class="col-md-6 mb-3" th:if="${record.isFollowUp == 1}">
+                    <label class="text-muted">复诊日期</label>
+                    <p class="mb-0">
+                        <span class="badge bg-info" th:text="${#temporals.format(record.followUpDate, 'yyyy-MM-dd')}"></span>
+                        <span th:if="${record.followUpNote}" th:text="' - ' + ${record.followUpNote}"></span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

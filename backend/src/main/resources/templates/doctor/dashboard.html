@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('医生工作台')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: doctor-sidebar('dashboard')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">工作台</h4>
+        <div>
+            <span class="text-muted me-3">欢迎，<span th:text="${user.realName}"></span></span>
+            <span class="badge bg-primary me-2" th:text="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"></span>
+            <span class="badge bg-info-subtle text-dark" data-beijing-clock>北京时间 --</span>
+        </div>
+    </div>
+    
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted mb-1">今日挂号</div>
+                        <div class="value" th:text="${todayRegistrations}">0</div>
+                    </div>
+                    <div class="icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted mb-1">今日营收</div>
+                        <div class="value">¥<span th:text="${todayRevenue}">0</span></div>
+                    </div>
+                    <div class="icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-currency-yen"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted mb-1">库存预警</div>
+                        <div class="value" th:text="${#lists.size(lowStockMedicines)}">0</div>
+                    </div>
+                    <div class="icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted mb-1">今日复诊</div>
+                        <div class="value" th:text="${#lists.size(todayFollowUps)}">0</div>
+                    </div>
+                    <div class="icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- 今日候诊列表 -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>今日候诊</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>病人姓名</th>
+                                <th>时段</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="reg : ${todayPatients}">
+                                <td th:text="${reg.queueNo}"></td>
+                                <td th:text="${reg.patient.realName}"></td>
+                                <td th:text="${reg.timePeriodText}"></td>
+                                <td>
+                                    <span class="badge" th:classappend="'badge-status-' + ${reg.status}" th:text="${reg.statusText}"></span>
+                                </td>
+                                <td>
+                                    <a th:if="${reg.status == 0}" th:href="@{/doctor/visit/{id}(id=${reg.id})}" class="btn btn-sm btn-primary">接诊</a>
+                                    <a th:if="${reg.status == 1}" th:href="@{/doctor/visit/{id}(id=${reg.id})}" class="btn btn-sm btn-success">继续</a>
+                                    <span th:if="${reg.status == 2}" class="text-muted">已完成</span>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(todayPatients)}">
+                                <td colspan="5" class="text-center text-muted py-4">暂无候诊病人</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 库存预警 -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2 text-warning"></i>库存预警</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li th:each="med : ${lowStockMedicines}" class="list-group-item d-flex justify-content-between">
+                            <span th:text="${med.medicineName}"></span>
+                            <span class="badge bg-danger" th:text="'剩余 ' + ${med.stockQuantity}"></span>
+                        </li>
+                        <li th:if="${#lists.isEmpty(lowStockMedicines)}" class="list-group-item text-center text-muted">
+                            库存充足
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

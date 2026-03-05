@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('库存预警')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: doctor-sidebar('medicine-warning')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">库存预警管理</h4>
+    </div>
+    
+    <div th:if="${message}" class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i><span th:text="${message}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    
+    <!-- 低库存预警 -->
+    <div class="card mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-exclamation-triangle text-danger me-2"></i>低库存药品预警</h5>
+            <span class="badge bg-danger" th:text="${#lists.size(lowStockMedicines)} + '种药品库存不足'"></span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>药品编码</th>
+                        <th>药品名称</th>
+                        <th>规格</th>
+                        <th>当前库存</th>
+                        <th>预警阈值</th>
+                        <th>缺口数量</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="med : ${lowStockMedicines}" class="table-danger">
+                        <td th:text="${med.medicineCode}"></td>
+                        <td th:text="${med.medicineName}"></td>
+                        <td th:text="${med.specification ?: '-'}"></td>
+                        <td class="fw-bold text-danger" th:text="${med.stockQuantity}"></td>
+                        <td th:text="${med.warningQuantity}"></td>
+                        <td th:text="${med.warningQuantity - med.stockQuantity}"></td>
+                        <td>
+                            <a th:href="@{/doctor/medicines/{id}/edit(id=${med.id})}" class="btn btn-sm btn-primary">补货</a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(lowStockMedicines)}">
+                        <td colspan="7" class="text-center text-success py-4">
+                            <i class="bi bi-check-circle me-2"></i>所有药品库存充足
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- 预警阈值设置 -->
+    <div class="card">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0"><i class="bi bi-gear me-2"></i>预警阈值设置</h5>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>药品名称</th>
+                        <th>当前库存</th>
+                        <th>预警阈值</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="med : ${allMedicines}">
+                        <td th:text="${med.medicineName}"></td>
+                        <td th:text="${med.stockQuantity}"></td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" style="width:80px;display:inline" 
+                                   th:value="${med.warningQuantity}" th:id="'warning_' + ${med.id}">
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" th:onclick="'updateWarning(' + ${med.id} + ')'">保存</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+    <div id="toast" class="toast align-items-center text-bg-success border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body"><i class="bi bi-check-circle me-2"></i><span id="toastMsg"></span></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+<script>
+function updateWarning(id) {
+    const value = document.getElementById('warning_' + id).value;
+    fetch('/doctor/medicines/' + id + '/warning?quantity=' + value, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('toastMsg').textContent = data.message || '预警阈值已更新';
+            new bootstrap.Toast(document.getElementById('toast')).show();
+        });
+}
+</script>
+</body>
+</html>

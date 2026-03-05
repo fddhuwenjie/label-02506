@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('接诊')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: doctor-sidebar('registrations')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">接诊 - <span th:text="${registration.patient.realName}"></span></h4>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-info-subtle text-dark" data-beijing-clock>北京时间 --</span>
+            <a th:href="@{/doctor/dashboard}" class="btn btn-outline-secondary btn-sm">返回工作台</a>
+        </div>
+    </div>
+    
+    <!-- Toast 提示 -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+        <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body"><i class="bi bi-check-circle me-2"></i><span id="toastMessage"></span></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+        <div id="errorToast" class="toast align-items-center text-bg-danger border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body"><i class="bi bi-exclamation-circle me-2"></i><span id="errorMessage"></span></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- 病人信息 -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0"><i class="bi bi-person me-2"></i>病人信息</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>姓名：</strong><span th:text="${registration.patient.realName}"></span></p>
+                    <p><strong>性别：</strong><span th:text="${profile?.gender == 1 ? '男' : (profile?.gender == 0 ? '女' : '-')}"></span></p>
+                    <p><strong>手机：</strong><span th:text="${registration.patient.phone ?: '-'}"></span></p>
+                    <p><strong>过敏史：</strong><span th:text="${profile?.allergyHistory ?: '无'}"></span></p>
+                    <p class="mb-0"><strong>既往病史：</strong><span th:text="${profile?.medicalHistory ?: '无'}"></span></p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0"><i class="bi bi-prescription2 me-2"></i>处方信息（随病历保存）</h6>
+                </div>
+                <div class="card-body">
+                    <div th:if="${message}" class="alert alert-success py-2 mb-3">
+                        <span th:text="${message}"></span>
+                    </div>
+                    <div th:if="${error}" class="alert alert-danger py-2 mb-3">
+                        <span th:text="${error}"></span>
+                    </div>
+                    <div th:if="${prescription != null}" class="alert alert-info py-2 mb-3">
+                        已有处方：<span th:text="${prescription.prescriptionNo}"></span>
+                    </div>
+                    <p class="text-muted small mb-2">不再单独点击“创建处方”，保存病历时会自动同步创建并生成缴费单。</p>
+                    <div class="mb-2">
+                        <label class="form-label">药品</label>
+                        <select name="medicineId" form="recordForm" class="form-select form-select-sm" th:disabled="${prescription != null}">
+                            <option value="">请选择药品</option>
+                            <option th:each="med : ${medicines}" th:value="${med.id}"
+                                    th:text="${med.medicineName + '（库存:' + med.stockQuantity + '）'}"></option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">数量</label>
+                        <input type="number" name="quantity" form="recordForm" class="form-control form-control-sm"
+                               min="1" value="1" th:disabled="${prescription != null}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">用量</label>
+                        <input type="text" name="dosage" form="recordForm" class="form-control form-control-sm"
+                               placeholder="如：每次1片" th:disabled="${prescription != null}">
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">频次</label>
+                        <input type="text" name="frequency" form="recordForm" class="form-control form-control-sm"
+                               placeholder="如：每日2次" th:disabled="${prescription != null}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0"><i class="bi bi-capsule me-2"></i>药品列表</h6>
+                </div>
+                <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>药品</th>
+                                <th>价格</th>
+                                <th>库存</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="med : ${medicines}">
+                                <td th:text="${med.medicineName}"></td>
+                                <td>¥<span th:text="${med.sellPrice}"></span></td>
+                                <td th:text="${med.stockQuantity}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 病历录入 -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0"><i class="bi bi-file-medical me-2"></i>病历录入</h6>
+                </div>
+                <div class="card-body">
+                    <form id="recordForm">
+                        <input type="hidden" name="registrationId" th:value="${registration.id}">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">主诉 <span class="text-danger">*</span></label>
+                            <textarea name="chiefComplaint" class="form-control" rows="2" th:text="${record?.chiefComplaint}" placeholder="病人主要症状描述" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">现病史</label>
+                            <textarea name="presentIllness" class="form-control" rows="2" th:text="${record?.presentIllness}"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">体格检查</label>
+                            <textarea name="physicalExam" class="form-control" rows="2" th:text="${record?.physicalExam}"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">诊断结果 <span class="text-danger">*</span></label>
+                            <input type="text" name="diagnosis" class="form-control" th:value="${record?.diagnosis}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">治疗方案 <span class="text-danger">*</span></label>
+                            <textarea name="treatmentPlan" class="form-control" rows="2" th:text="${record?.treatmentPlan}" required></textarea>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">是否复诊</label>
+                                <select name="isFollowUp" class="form-select">
+                                    <option value="0" th:selected="${record?.isFollowUp != 1}">否</option>
+                                    <option value="1" th:selected="${record?.isFollowUp == 1}">是</option>
+                                </select>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">复诊日期</label>
+                                <input type="date" name="followUpDate" class="form-control" th:value="${record?.followUpDate}">
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button id="startVisitBtn" type="button" class="btn btn-primary"
+                                    th:if="${registration.status == 0}" onclick="startVisit()">
+                                <i class="bi bi-play-circle me-1"></i>开始接诊
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle me-1"></i>保存病历
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+<script th:inline="javascript">
+const regId = [[${registration.id}]];
+const startVisitBtn = document.getElementById('startVisitBtn');
+
+function showToast(message, isError = false) {
+    const toastEl = document.getElementById(isError ? 'errorToast' : 'successToast');
+    const msgEl = document.getElementById(isError ? 'errorMessage' : 'toastMessage');
+    msgEl.textContent = message;
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+}
+
+function startVisit() {
+    fetch('/doctor/visit/' + regId + '/start', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message || '已开始接诊，请录入病历信息');
+                if (startVisitBtn) {
+                    startVisitBtn.classList.add('d-none');
+                }
+            } else {
+                showToast(data.message || '操作失败，请稍后重试', true);
+            }
+        })
+        .catch(error => {
+            showToast('网络异常，请检查网络连接', true);
+        });
+}
+
+document.getElementById('recordForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch('/doctor/visit/' + regId + '/save', {
+        method: 'POST',
+        body: new URLSearchParams(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || '病历保存成功，就诊已完成');
+            setTimeout(() => {
+                window.location.href = '/doctor/prescriptions';
+            }, 1200);
+        } else {
+            showToast(data.message || '保存失败，请稍后重试', true);
+        }
+    })
+    .catch(error => {
+        showToast('网络异常，请检查网络连接', true);
+    });
+});
+</script>
+</body>
+</html>

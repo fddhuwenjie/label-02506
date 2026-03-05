@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 门诊管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .bg-decoration {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .bg-circle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.15;
+            filter: blur(60px);
+        }
+        .bg-circle-1 {
+            width: 500px; height: 500px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            top: -150px; left: -100px;
+            animation: float1 20s ease-in-out infinite;
+        }
+        .bg-circle-2 {
+            width: 400px; height: 400px;
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            bottom: -100px; right: -50px;
+            animation: float2 25s ease-in-out infinite;
+        }
+        .bg-circle-3 {
+            width: 300px; height: 300px;
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            top: 50%; left: 60%;
+            animation: float3 18s ease-in-out infinite;
+        }
+        .bg-grid {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+        @keyframes float1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(50px, 30px) scale(1.1); }
+        }
+        @keyframes float2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-40px, -50px) scale(1.15); }
+        }
+        @keyframes float3 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -40px) scale(0.9); }
+        }
+        .login-wrapper {
+            width: 100%;
+            max-width: 420px;
+            animation: fadeInUp 0.8s ease-out;
+            position: relative;
+            z-index: 1;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 32px 24px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-radius: 24px 24px 0 0;
+        }
+        .card-header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            border-radius: 24px 24px 0 0;
+        }
+        .logo-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 28px;
+            color: white;
+            position: relative;
+        }
+        .card-header h3 {
+            color: white;
+            font-size: 22px;
+            font-weight: 600;
+            margin: 0;
+            position: relative;
+        }
+        .card-header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin: 8px 0 0;
+            position: relative;
+        }
+        .card-body {
+            padding: 32px;
+        }
+        .form-label {
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .input-group-text {
+            background: #f3f4f6;
+            border: 2px solid #e5e7eb;
+            border-right: none;
+            color: #6b7280;
+            padding: 12px 16px;
+        }
+        .form-control {
+            border: 2px solid #e5e7eb;
+            border-left: none;
+            padding: 12px 16px;
+            font-size: 15px;
+            transition: all 0.2s ease;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: none;
+        }
+        .input-group:focus-within .input-group-text {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        .input-group:focus-within .form-control {
+            border-color: #667eea;
+        }
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 14px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+            background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+        }
+        .btn-login:active {
+            transform: translateY(0);
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e5e7eb;
+        }
+        .divider span { padding: 0 16px; }
+        .register-link {
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .register-link a {
+            color: #667eea;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .register-link a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+        .alert {
+            border: none;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .alert-danger {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+        .alert-success {
+            background: #f0fdf4;
+            color: #16a34a;
+        }
+        .footer-text {
+            text-align: center;
+            margin-top: 24px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+        .medical-icons {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .medical-icon {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.03);
+            font-size: 80px;
+        }
+        .medical-icon:nth-child(1) { top: 10%; left: 5%; transform: rotate(-15deg); }
+        .medical-icon:nth-child(2) { top: 60%; left: 8%; transform: rotate(10deg); }
+        .medical-icon:nth-child(3) { top: 20%; right: 5%; transform: rotate(20deg); }
+        .medical-icon:nth-child(4) { top: 70%; right: 10%; transform: rotate(-10deg); }
+        .medical-icon:nth-child(5) { top: 40%; left: 3%; transform: rotate(5deg); }
+        .medical-icon:nth-child(6) { bottom: 15%; right: 3%; transform: rotate(-20deg); }
+    </style>
+</head>
+<body>
+<div class="bg-decoration">
+    <div class="bg-grid"></div>
+    <div class="bg-circle bg-circle-1"></div>
+    <div class="bg-circle bg-circle-2"></div>
+    <div class="bg-circle bg-circle-3"></div>
+</div>
+<div class="medical-icons">
+    <i class="bi bi-heart-pulse medical-icon"></i>
+    <i class="bi bi-capsule medical-icon"></i>
+    <i class="bi bi-bandaid medical-icon"></i>
+    <i class="bi bi-clipboard2-pulse medical-icon"></i>
+    <i class="bi bi-prescription2 medical-icon"></i>
+    <i class="bi bi-hospital medical-icon"></i>
+</div>
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="card-header">
+            <div class="logo-icon">
+                <i class="bi bi-hospital"></i>
+            </div>
+            <h3>门诊管理系统</h3>
+            <p>私立医院门诊日常运营管理平台</p>
+        </div>
+        <div class="card-body">
+            <div th:if="${error}" class="alert alert-danger">
+                <i class="bi bi-exclamation-circle me-2"></i><span th:text="${error}"></span>
+            </div>
+            <div th:if="${message}" class="alert alert-success">
+                <i class="bi bi-check-circle me-2"></i><span th:text="${message}"></span>
+            </div>
+
+            <form th:action="@{/login}" method="post">
+                <div class="mb-3">
+                    <label class="form-label">用户名</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input type="text" name="username" class="form-control" required placeholder="请输入用户名" autocomplete="username">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">密码</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input type="password" name="password" class="form-control" required placeholder="请输入密码" autocomplete="current-password">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-login w-100">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>登 录
+                </button>
+            </form>
+
+            <div class="divider"><span>或</span></div>
+
+            <div class="register-link">
+                还没有账号？<a th:href="@{/register}">立即注册</a>
+            </div>
+        </div>
+    </div>
+    <div class="footer-text">
+        © 2026 私立医院门诊管理系统
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

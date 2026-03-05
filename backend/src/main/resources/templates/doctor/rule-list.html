@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('挂号规则管理')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: doctor-sidebar('rules')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">挂号规则管理</h4>
+        <a th:href="@{/doctor/rules/add}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>新增规则
+        </a>
+    </div>
+    
+    <div th:if="${message}" class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i><span th:text="${message}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+        <div id="toast" class="toast align-items-center text-bg-success border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body"><i class="bi bi-check-circle me-2"></i><span id="toastMsg"></span></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 删除确认弹窗 -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>确认删除</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">确定要删除这条挂号规则吗？</div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <form id="deleteForm" method="post" style="display:inline">
+                        <button type="submit" class="btn btn-danger">确认删除</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>医生</th>
+                        <th>星期</th>
+                        <th>时段</th>
+                        <th>时间</th>
+                        <th>最大挂号数</th>
+                        <th>挂号费</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="rule : ${allRules}">
+                        <td th:text="${rule.doctor.realName}"></td>
+                        <td th:text="${rule.weekDayText}"></td>
+                        <td th:text="${rule.timePeriod == 1 ? '上午' : '下午'}"></td>
+                        <td th:text="${rule.startTime} + ' - ' + ${rule.endTime}"></td>
+                        <td th:text="${rule.maxCount}"></td>
+                        <td>¥<span th:text="${rule.fee}"></span></td>
+                        <td>
+                            <span th:if="${rule.status == 1}" class="badge bg-success">正常</span>
+                            <span th:if="${rule.status != 1}" class="badge bg-secondary">停诊</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-secondary" th:onclick="'toggleStatus(' + ${rule.id} + ')'">
+                                <span th:if="${rule.status == 1}">停诊</span>
+                                <span th:if="${rule.status != 1}">启用</span>
+                            </button>
+                            <a th:href="@{/doctor/rules/{id}/edit(id=${rule.id})}" class="btn btn-sm btn-outline-primary">编辑</a>
+                            <button class="btn btn-sm btn-outline-danger" th:data-url="@{/doctor/rules/{id}/delete(id=${rule.id})}" onclick="showDeleteModal(this)">删除</button>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(allRules)}">
+                        <td colspan="8" class="text-center text-muted py-4">暂无挂号规则，请先添加</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+<script>
+function toggleStatus(id) {
+    fetch('/doctor/rules/' + id + '/toggle', { method: 'POST' })
+        .then(response => response.text())
+        .then(data => {
+            document.getElementById('toastMsg').textContent = '状态已更新';
+            new bootstrap.Toast(document.getElementById('toast')).show();
+            setTimeout(() => location.reload(), 1000);
+        });
+}
+
+function showDeleteModal(btn) {
+    document.getElementById('deleteForm').action = btn.getAttribute('data-url');
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+</body>
+</html>

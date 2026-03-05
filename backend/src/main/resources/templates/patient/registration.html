@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('在线挂号')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: patient-sidebar('registration')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">在线挂号</h4>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <i class="bi bi-exclamation-circle me-2"></i><span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${message}" class="alert alert-success alert-dismissible fade show">
+                <i class="bi bi-check-circle me-2"></i><span th:text="${message}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            
+            <form th:action="@{/patient/registration/create}" method="post">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">选择医生 <span class="text-danger">*</span></label>
+                        <select name="doctorId" id="doctorSelect" class="form-select" required>
+                            <option value="">请选择医生</option>
+                            <option th:each="doctor : ${doctors}" th:value="${doctor.id}" th:text="${doctor.realName}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">就诊日期 <span class="text-danger">*</span></label>
+                        <input type="date" name="date" id="dateInput" class="form-control" required 
+                               th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">选择时段 <span class="text-danger">*</span></label>
+                    <div id="timePeriodContainer">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="timePeriod" id="morning" value="1">
+                            <label class="form-check-label" for="morning">上午</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="timePeriod" id="afternoon" value="2">
+                            <label class="form-check-label" for="afternoon">下午</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="scheduleInfo" class="alert alert-info d-none">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <span id="scheduleText"></span>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle me-1"></i>确认挂号
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+<script>
+document.getElementById('doctorSelect').addEventListener('change', function() {
+    const doctorId = this.value;
+    if (doctorId) {
+        fetch('/patient/registration/schedule?doctorId=' + doctorId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    const weekDays = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+                    let text = '出诊时间：';
+                    data.forEach(rule => {
+                        text += weekDays[rule.weekDay] + (rule.timePeriod === 1 ? '上午' : '下午') + '、';
+                    });
+                    document.getElementById('scheduleText').textContent = text.slice(0, -1);
+                    document.getElementById('scheduleInfo').classList.remove('d-none');
+                }
+            });
+    }
+});
+</script>
+</body>
+</html>

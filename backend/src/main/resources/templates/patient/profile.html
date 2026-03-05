@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('我的档案')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: patient-sidebar('profile')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">我的档案</h4>
+    </div>
+    
+    <div th:if="${message}" class="alert alert-success alert-dismissible fade show">
+        <span th:text="${message}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0">基本信息</h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/patient/profile/update}" method="post">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">就诊卡号</label>
+                        <input type="text" class="form-control" th:value="${profile?.medicalCardNo}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">姓名</label>
+                        <input type="text" class="form-control" th:value="${user.realName}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">性别</label>
+                        <select name="gender" class="form-select">
+                            <option value="">请选择</option>
+                            <option value="1" th:selected="${profile?.gender == 1}">男</option>
+                            <option value="0" th:selected="${profile?.gender == 0}">女</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">出生日期</label>
+                        <input type="date" name="birthDate" class="form-control" th:value="${profile?.birthDate}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">手机号</label>
+                        <input type="text" class="form-control" th:value="${user.phone}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">血型</label>
+                        <select name="bloodType" class="form-select">
+                            <option value="">请选择</option>
+                            <option th:each="type : ${ {'A', 'B', 'AB', 'O'} }" th:value="${type}" th:text="${type + '型'}" th:selected="${profile?.bloodType == type}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">家庭住址</label>
+                        <input type="text" name="address" class="form-control" th:value="${profile?.address}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">紧急联系人</label>
+                        <input type="text" name="emergencyContact" class="form-control" th:value="${profile?.emergencyContact}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">紧急联系电话</label>
+                        <input type="text" name="emergencyPhone" class="form-control" th:value="${profile?.emergencyPhone}">
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">过敏史</label>
+                        <textarea name="allergyHistory" class="form-control" rows="2" th:text="${profile?.allergyHistory}"></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle me-1"></i>保存修改
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

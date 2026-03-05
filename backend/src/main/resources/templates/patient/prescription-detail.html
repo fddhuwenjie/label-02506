@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('处方详情')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: patient-sidebar('prescriptions')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">处方详情</h4>
+        <div>
+            <a th:href="@{/patient/prescriptions/{id}/print(id=${prescription.id})}" class="btn btn-primary btn-sm" target="_blank">
+                <i class="bi bi-printer me-1"></i>打印处方
+            </a>
+            <a th:href="@{/patient/prescriptions}" class="btn btn-outline-secondary btn-sm">返回列表</a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0">处方信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">处方编号</label>
+                            <p class="mb-0 fw-bold" th:text="${prescription.prescriptionNo}"></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">状态</label>
+                            <p class="mb-0">
+                                <span class="badge" th:classappend="'badge-status-' + ${prescription.status}" th:text="${prescription.statusText}"></span>
+                            </p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">开方医生</label>
+                            <p class="mb-0" th:text="${prescription.doctor.realName}"></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">开方时间</label>
+                            <p class="mb-0" th:text="${#temporals.format(prescription.createTime, 'yyyy-MM-dd HH:mm')}"></p>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="text-muted">诊断</label>
+                            <p class="mb-0" th:text="${prescription.diagnosis ?: '-'}"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 药品明细 -->
+            <div class="card">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0">药品明细</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>药品名称</th>
+                                <th>规格</th>
+                                <th>数量</th>
+                                <th>单价</th>
+                                <th>金额</th>
+                                <th>用法用量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="d : ${prescription.details}">
+                                <td th:text="${d.medicineName}"></td>
+                                <td th:text="${d.specification ?: '-'}"></td>
+                                <td th:text="${d.quantity} + ${d.unit}"></td>
+                                <td>¥<span th:text="${d.unitPrice}"></span></td>
+                                <td>¥<span th:text="${d.amount}"></span></td>
+                                <td>
+                                    <small th:text="${d.dosage} + '，' + ${d.frequency} + '，' + ${d.administration}"></small>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end fw-bold">合计：</td>
+                                <td colspan="2" class="fw-bold text-primary">¥<span th:text="${prescription.totalAmount}"></span></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0">温馨提示</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>请遵医嘱按时服药</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>如有不适请及时就医</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>处方有效期为3天</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>请妥善保管处方单</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

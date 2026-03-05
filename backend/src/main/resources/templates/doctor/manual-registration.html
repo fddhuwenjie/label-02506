@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('现场挂号')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: doctor-sidebar('registrations')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">现场挂号</h4>
+        <a th:href="@{/doctor/registrations}" class="btn btn-outline-secondary btn-sm">返回挂号管理</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <i class="bi bi-exclamation-circle me-2"></i><span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${message}" class="alert alert-success alert-dismissible fade show">
+                <i class="bi bi-check-circle me-2"></i><span th:text="${message}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <form th:action="@{/doctor/registrations/manual/create}" method="post" class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">选择病人 <span class="text-danger">*</span></label>
+                    <select name="patientId" class="form-select" required>
+                        <option value="">请选择病人</option>
+                        <option th:each="patient : ${patients}" th:value="${patient.id}"
+                                th:text="${patient.realName + '（' + (patient.phone ?: '无手机号') + '）'}"></option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">就诊日期 <span class="text-danger">*</span></label>
+                    <input type="date" name="date" class="form-control" th:min="${today}" th:value="${today}" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">就诊时段 <span class="text-danger">*</span></label>
+                    <select name="timePeriod" class="form-select" required>
+                        <option value="1">上午</option>
+                        <option value="2">下午</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>确认现场挂号
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

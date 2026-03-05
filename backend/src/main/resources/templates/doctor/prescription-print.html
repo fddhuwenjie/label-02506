@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>处方打印</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "SimSun", serif; font-size: 14px; padding: 20px; }
+        .prescription { max-width: 800px; margin: 0 auto; border: 2px solid #333; padding: 20px; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
+        .header h1 { font-size: 24px; margin-bottom: 5px; }
+        .header .subtitle { font-size: 18px; color: #666; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .info-item { flex: 1; }
+        .info-item label { color: #666; }
+        .divider { border-top: 1px dashed #999; margin: 15px 0; }
+        .rx-symbol { font-size: 28px; font-weight: bold; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { border: 1px solid #999; padding: 8px; text-align: left; }
+        th { background: #f5f5f5; }
+        .total { text-align: right; font-size: 16px; font-weight: bold; margin: 15px 0; }
+        .footer { margin-top: 30px; display: flex; justify-content: space-between; }
+        .signature { width: 45%; }
+        .signature p { margin-bottom: 30px; }
+        .print-btn { position: fixed; top: 20px; right: 20px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        @media print { .print-btn { display: none; } }
+    </style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">打印处方</button>
+
+<div class="prescription">
+    <div class="header">
+        <h1>门诊处方笺</h1>
+        <p class="subtitle">OUTPATIENT PRESCRIPTION</p>
+    </div>
+    
+    <div class="info-row">
+        <div class="info-item">
+            <label>处方编号：</label>
+            <span th:text="${prescription.prescriptionNo}">RX001</span>
+        </div>
+        <div class="info-item">
+            <label>开方日期：</label>
+            <span th:text="${#temporals.format(prescription.createTime, 'yyyy年MM月dd日')}">2026年02月24日</span>
+        </div>
+    </div>
+    
+    <div class="info-row">
+        <div class="info-item">
+            <label>姓名：</label>
+            <span th:text="${prescription.patient.realName}">患者姓名</span>
+        </div>
+        <div class="info-item">
+            <label>联系电话：</label>
+            <span th:if="${prescription.patient.phone != null}" th:text="${prescription.patient.phone}"></span>
+            <span th:if="${prescription.patient.phone == null}">-</span>
+        </div>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="info-row">
+        <div class="info-item">
+            <label>临床诊断：</label>
+            <span th:if="${prescription.diagnosis != null}" th:text="${prescription.diagnosis}"></span>
+            <span th:if="${prescription.diagnosis == null}">-</span>
+        </div>
+    </div>
+    
+    <div class="rx-symbol">Rp.</div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="width:30%">药品名称</th>
+                <th style="width:15%">规格</th>
+                <th style="width:10%">数量</th>
+                <th style="width:10%">单价</th>
+                <th style="width:35%">用法用量</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="d : ${prescription.details}">
+                <td th:text="${d.medicineName}">药品名</td>
+                <td th:text="${d.specification != null ? d.specification : '-'}">规格</td>
+                <td><span th:text="${d.quantity}">1</span><span th:text="${d.unit}">盒</span></td>
+                <td>¥<span th:text="${d.unitPrice}">10.00</span></td>
+                <td th:text="${(d.dosage != null ? d.dosage : '') + '，' + (d.frequency != null ? d.frequency : '') + '，' + (d.administration != null ? d.administration : '')}">用法</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="total">
+        处方金额：¥<span th:text="${prescription.totalAmount}">0.00</span>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="footer">
+        <div class="signature">
+            <p>开方医师：<span th:text="${prescription.doctor.realName}">医生</span></p>
+            <p>审核药师：<span th:if="${prescription.auditDoctor != null}" th:text="${prescription.auditDoctor.realName}"></span><span th:if="${prescription.auditDoctor == null}">________</span></p>
+        </div>
+        <div class="signature">
+            <p>发药药师：________________</p>
+            <p>发药日期：________________</p>
+        </div>
+    </div>
+    
+    <div style="margin-top: 20px; font-size: 12px; color: #666;">
+        <p>注意事项：请遵医嘱用药，如有不适请及时就医。处方有效期3天。</p>
+    </div>
+</div>
+</body>
+</html>

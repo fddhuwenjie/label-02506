@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('病人详情')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: doctor-sidebar('patients')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">病人详情</h4>
+        <a th:href="@{/doctor/patients}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>返回列表
+        </a>
+    </div>
+    
+    <!-- 基本信息 -->
+    <div class="card mb-4">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0"><i class="bi bi-person me-2"></i>基本信息</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="text-muted">就诊卡号</label>
+                    <p class="mb-0 fw-bold" th:text="${profile?.medicalCardNo ?: '未建档'}"></p>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="text-muted">姓名</label>
+                    <p class="mb-0 fw-bold" th:text="${patient.realName}"></p>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="text-muted">性别</label>
+                    <p class="mb-0" th:text="${profile?.gender == 1 ? '男' : (profile?.gender == 0 ? '女' : '-')}"></p>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="text-muted">出生日期</label>
+                    <p class="mb-0" th:text="${profile?.birthDate != null ? #temporals.format(profile.birthDate, 'yyyy-MM-dd') : '-'}"></p>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="text-muted">手机号</label>
+                    <p class="mb-0" th:text="${patient.phone ?: '-'}"></p>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="text-muted">血型</label>
+                    <p class="mb-0" th:text="${profile?.bloodType != null ? profile.bloodType + '型' : '-'}"></p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="text-muted">家庭住址</label>
+                    <p class="mb-0" th:text="${profile?.address ?: '-'}"></p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="text-muted">过敏史</label>
+                    <p class="mb-0" th:text="${profile?.allergyHistory ?: '无'}"></p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="text-muted">既往病史</label>
+                    <p class="mb-0" th:text="${profile?.medicalHistory ?: '无'}"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 就诊记录 -->
+    <div class="card">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0"><i class="bi bi-file-medical me-2"></i>就诊记录</h5>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>病历号</th>
+                        <th>就诊时间</th>
+                        <th>诊断</th>
+                        <th>接诊医生</th>
+                        <th>复诊</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="record : ${records}">
+                        <td th:text="${record.recordNo}"></td>
+                        <td th:text="${#temporals.format(record.visitTime, 'yyyy-MM-dd HH:mm')}"></td>
+                        <td th:text="${record.diagnosis ?: '-'}"></td>
+                        <td th:text="${record.doctor.realName}"></td>
+                        <td>
+                            <span th:if="${record.isFollowUp == 1}" class="badge bg-info" th:text="${#temporals.format(record.followUpDate, 'MM-dd')}"></span>
+                            <span th:if="${record.isFollowUp != 1}">-</span>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(records)}">
+                        <td colspan="5" class="text-center text-muted py-4">暂无就诊记录</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

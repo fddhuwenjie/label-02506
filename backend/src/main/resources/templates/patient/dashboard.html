@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('个人中心')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: patient-sidebar('dashboard')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">个人中心</h4>
+        <span class="text-muted">欢迎，<span th:text="${user.realName}"></span></span>
+    </div>
+    
+    <!-- 就诊卡信息 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                        <i class="bi bi-person-badge fs-1 text-primary"></i>
+                    </div>
+                </div>
+                <div class="col">
+                    <h5 th:text="${user.realName}">姓名</h5>
+                    <p class="text-muted mb-0">
+                        就诊卡号：<span th:text="${profile?.medicalCardNo ?: '未建档'}"></span>
+                    </p>
+                </div>
+                <div class="col-auto">
+                    <a th:href="@{/patient/registration}" class="btn btn-primary">
+                        <i class="bi bi-calendar-plus me-1"></i>立即挂号
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- 待就诊 -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-calendar-check me-2 text-primary"></i>待就诊</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li th:each="reg : ${upcomingRegistrations}" class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong th:text="${reg.doctor.realName}"></strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        <span th:text="${#temporals.format(reg.regDate, 'MM-dd')}"></span>
+                                        <span th:text="${reg.timePeriodText}"></span>
+                                        第<span th:text="${reg.queueNo}"></span>号
+                                    </small>
+                                </div>
+                                <span class="badge bg-warning">待就诊</span>
+                            </div>
+                        </li>
+                        <li th:if="${#lists.isEmpty(upcomingRegistrations)}" class="list-group-item text-center text-muted py-4">
+                            暂无待就诊记录
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 复诊提醒 -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-bell me-2 text-info"></i>复诊提醒</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li th:each="record : ${followUps}" class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong th:text="${record.diagnosis}"></strong>
+                                    <br>
+                                    <small class="text-muted" th:text="'复诊日期：' + ${#temporals.format(record.followUpDate, 'yyyy-MM-dd')}"></small>
+                                </div>
+                                <a th:href="@{/patient/registration}" class="btn btn-sm btn-outline-primary">去挂号</a>
+                            </div>
+                        </li>
+                        <li th:if="${#lists.isEmpty(followUps)}" class="list-group-item text-center text-muted py-4">
+                            暂无复诊提醒
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 待缴费 -->
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-credit-card me-2 text-danger"></i>待缴费</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>单号</th>
+                                <th>费用类型</th>
+                                <th>金额</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="payment : ${unpaidPayments}">
+                                <td th:text="${payment.paymentNo}"></td>
+                                <td th:text="${payment.feeTypeText}"></td>
+                                <td>¥<span th:text="${payment.totalAmount}"></span></td>
+                                <td><span class="badge bg-warning" th:text="${payment.statusText}"></span></td>
+                                <td><a th:href="@{/patient/payments}" class="btn btn-sm btn-outline-primary">去缴费</a></td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(unpaidPayments)}">
+                                <td colspan="5" class="text-center text-muted py-4">暂无待缴费记录</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

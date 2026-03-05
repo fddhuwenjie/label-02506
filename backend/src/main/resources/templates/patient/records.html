@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('就诊记录')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: patient-sidebar('records')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">就诊记录</h4>
+    </div>
+    
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>病历号</th>
+                        <th>就诊时间</th>
+                        <th>接诊医生</th>
+                        <th>诊断</th>
+                        <th>复诊</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="record : ${records}">
+                        <td th:text="${record.recordNo}"></td>
+                        <td th:text="${#temporals.format(record.visitTime, 'yyyy-MM-dd HH:mm')}"></td>
+                        <td th:text="${record.doctor.realName}"></td>
+                        <td th:text="${record.diagnosis ?: '-'}"></td>
+                        <td>
+                            <span th:if="${record.isFollowUp == 1}" class="badge bg-info" th:text="${#temporals.format(record.followUpDate, 'MM-dd')}"></span>
+                            <span th:if="${record.isFollowUp != 1}" class="text-muted">-</span>
+                        </td>
+                        <td>
+                            <a th:href="@{/patient/records/{id}(id=${record.id})}" class="btn btn-sm btn-outline-primary">查看详情</a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(records)}">
+                        <td colspan="6" class="text-center text-muted py-4">暂无就诊记录</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

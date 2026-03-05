@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('缴费记录')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: patient-sidebar('payments')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">缴费记录</h4>
+        <span class="badge bg-info-subtle text-dark" data-beijing-clock>北京时间 --</span>
+    </div>
+
+    <div th:if="${message}" class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i><span th:text="${message}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-circle me-2"></i><span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>缴费单号</th>
+                        <th>费用类型</th>
+                        <th>应付金额</th>
+                        <th>实付金额</th>
+                        <th>待付金额</th>
+                        <th>支付时间</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="payment : ${payments}">
+                        <td th:text="${payment.paymentNo}"></td>
+                        <td th:text="${payment.feeTypeText}"></td>
+                        <td>¥<span th:text="${payment.totalAmount}"></span></td>
+                        <td>¥<span th:text="${payment.paidAmount}"></span></td>
+                        <td>¥<span th:text="${payment.totalAmount - payment.paidAmount}"></span></td>
+                        <td th:text="${payment.payTime != null ? #temporals.format(payment.payTime, 'yyyy-MM-dd HH:mm') : '-'}"></td>
+                        <td>
+                            <span class="badge" th:classappend="'badge-status-' + ${payment.status}" th:text="${payment.statusText}"></span>
+                        </td>
+                        <td>
+                            <button th:if="${payment.status == 0 || payment.status == 2}" type="button"
+                                    class="btn btn-sm btn-primary"
+                                    data-bs-toggle="modal" data-bs-target="#payModal"
+                                    th:attr="data-payment-id=${payment.id},data-payment-no=${payment.paymentNo}">
+                                立即缴费
+                            </button>
+                            <span th:if="${payment.status == 1}" class="text-success">已完成</span>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(payments)}">
+                        <td colspan="8" class="text-center text-muted py-4">暂无缴费记录</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="payForm" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">在线缴费</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">缴费单号：<span id="payPaymentNo"></span></div>
+                    <div class="mb-3">
+                        <label class="form-label">缴费金额</label>
+                        <input type="number" name="paidAmount" class="form-control" min="0.01" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">支付方式</label>
+                        <select name="paymentMethod" class="form-select" required>
+                            <option value="2">微信</option>
+                            <option value="3">支付宝</option>
+                            <option value="4">银行卡</option>
+                            <option value="1">现金</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">确认支付</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+<script>
+const payModal = document.getElementById('payModal');
+payModal.addEventListener('show.bs.modal', function (event) {
+    const trigger = event.relatedTarget;
+    const paymentId = trigger.getAttribute('data-payment-id');
+    const paymentNo = trigger.getAttribute('data-payment-no');
+    document.getElementById('payPaymentNo').textContent = paymentNo;
+    document.getElementById('payForm').action = '/patient/payments/' + paymentId + '/pay';
+});
+</script>
+</body>
+</html>

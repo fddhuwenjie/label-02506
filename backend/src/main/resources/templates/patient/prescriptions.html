@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('我的处方')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: patient-sidebar('prescriptions')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">我的处方</h4>
+    </div>
+    
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>处方编号</th>
+                        <th>开方时间</th>
+                        <th>开方医生</th>
+                        <th>诊断</th>
+                        <th>金额</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="p : ${prescriptions}">
+                        <td th:text="${p.prescriptionNo}"></td>
+                        <td th:text="${#temporals.format(p.createTime, 'yyyy-MM-dd HH:mm')}"></td>
+                        <td th:text="${p.doctor.realName}"></td>
+                        <td th:text="${p.diagnosis ?: '-'}"></td>
+                        <td>¥<span th:text="${p.totalAmount}"></span></td>
+                        <td>
+                            <span class="badge" th:classappend="'badge-status-' + ${p.status}" th:text="${p.statusText}"></span>
+                        </td>
+                        <td>
+                            <a th:href="@{/patient/prescriptions/{id}(id=${p.id})}" class="btn btn-sm btn-outline-primary">详情</a>
+                            <a th:href="@{/patient/prescriptions/{id}/print(id=${p.id})}" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                <i class="bi bi-printer"></i> 打印
+                            </a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(prescriptions)}">
+                        <td colspan="7" class="text-center text-muted py-4">暂无处方记录</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

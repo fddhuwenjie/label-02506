@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('我的挂号')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: patient-sidebar('my-registrations')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">我的挂号</h4>
+        <a th:href="@{/patient/registration}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>新挂号
+        </a>
+    </div>
+    
+    <div th:if="${message}" class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i><span th:text="${message}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-circle me-2"></i><span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    
+    <!-- 确认取消弹窗 -->
+    <div class="modal fade" id="cancelModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title"><i class="bi bi-question-circle text-warning me-2"></i>确认取消</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">确定要取消这个挂号吗？取消后需要重新预约。</p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">再想想</button>
+                    <form id="cancelForm" method="post" style="display:inline">
+                        <button type="submit" class="btn btn-danger">确认取消</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>挂号单号</th>
+                        <th>医生</th>
+                        <th>就诊日期</th>
+                        <th>时段</th>
+                        <th>序号</th>
+                        <th>挂号费</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="reg : ${registrations}">
+                        <td th:text="${reg.regNo}"></td>
+                        <td th:text="${reg.doctor.realName}"></td>
+                        <td th:text="${#temporals.format(reg.regDate, 'yyyy-MM-dd')}"></td>
+                        <td th:text="${reg.timePeriodText}"></td>
+                        <td th:text="${reg.queueNo}"></td>
+                        <td>¥<span th:text="${reg.fee}"></span></td>
+                        <td>
+                            <span class="badge" th:classappend="'badge-status-' + ${reg.status}" th:text="${reg.statusText}"></span>
+                        </td>
+                        <td>
+                            <button th:if="${reg.status == 0}" type="button" class="btn btn-sm btn-outline-danger" 
+                                    th:data-url="@{/patient/registration/{id}/cancel(id=${reg.id})}"
+                                    onclick="showCancelModal(this)">取消</button>
+                            <span th:if="${reg.status != 0}" class="text-muted">-</span>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(registrations)}">
+                        <td colspan="8" class="text-center text-muted py-4">暂无挂号记录</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+<script>
+function showCancelModal(btn) {
+    const url = btn.getAttribute('data-url');
+    document.getElementById('cancelForm').action = url;
+    new bootstrap.Modal(document.getElementById('cancelModal')).show();
+}
+</script>
+</body>
+</html>

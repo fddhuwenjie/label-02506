@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('挂号管理')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: doctor-sidebar('registrations')}"></nav>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h4 class="mb-0">挂号管理</h4>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="badge bg-info-subtle text-dark" data-beijing-clock>北京时间 --</span>
+            <a th:href="@{/doctor/registrations/manual}" class="btn btn-success btn-sm">
+                <i class="bi bi-person-plus me-1"></i>现场挂号
+            </a>
+            <a th:href="@{/doctor/payments}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-credit-card me-1"></i>费用管理
+            </a>
+            <form class="d-flex align-items-center gap-2 mb-0" method="get">
+                <input type="date" name="date" class="form-control form-control-sm" th:value="${queryDate}" style="min-width: 150px;">
+                <button type="submit" class="btn btn-primary btn-sm">查询</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>挂号单号</th>
+                        <th>病人姓名</th>
+                        <th>时段</th>
+                        <th>序号</th>
+                        <th>挂号费</th>
+                        <th>来源</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="reg : ${registrations}">
+                        <td th:text="${reg.regNo}"></td>
+                        <td th:text="${reg.patient.realName}"></td>
+                        <td th:text="${reg.timePeriodText}"></td>
+                        <td th:text="${reg.queueNo}"></td>
+                        <td>¥<span th:text="${reg.fee}"></span></td>
+                        <td th:text="${reg.source == 0 ? '线上' : '现场'}"></td>
+                        <td>
+                            <span class="badge" th:classappend="'badge-status-' + ${reg.status}" th:text="${reg.statusText}"></span>
+                        </td>
+                        <td>
+                            <a th:if="${reg.status == 0}" th:href="@{/doctor/visit/{id}(id=${reg.id})}" class="btn btn-sm btn-primary">接诊</a>
+                            <a th:if="${reg.status == 1}" th:href="@{/doctor/visit/{id}(id=${reg.id})}" class="btn btn-sm btn-success">继续</a>
+                            <a th:href="@{/doctor/payments(registrationId=${reg.id})}" class="btn btn-sm btn-outline-secondary">费用</a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(registrations)}">
+                        <td colspan="8" class="text-center text-muted py-4">暂无挂号记录</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>
