@@ -15,9 +15,9 @@
             <a th:href="@{/doctor/payments}" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-credit-card me-1"></i>费用管理
             </a>
-            <form class="d-flex align-items-center gap-2 mb-0" method="get">
-                <input type="date" name="date" class="form-control form-control-sm" th:value="${queryDate}" style="min-width: 150px;">
-                <button type="submit" class="btn btn-primary btn-sm">查询</button>
+            <form class="d-flex align-items-center gap-2 mb-0 flex-nowrap" method="get">
+                <input type="date" name="date" class="form-control form-control-sm" th:value="${queryDate}" style="width: 150px;">
+                <button type="submit" class="btn btn-primary btn-sm text-nowrap">查询</button>
             </form>
         </div>
     </div>

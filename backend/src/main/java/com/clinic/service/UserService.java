@@ -41,6 +41,19 @@ public class UserService {
     
     @Transactional
     public User registerPatient(String username, String password, String realName, String phone) {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("用户名不能为空");
+        }
+        if (password == null || password.length() < 6) {
+            throw new IllegalArgumentException("密码不能为空且长度至少6位");
+        }
+        if (realName == null || realName.isBlank()) {
+            throw new IllegalArgumentException("真实姓名不能为空");
+        }
+        if (existsByUsername(username)) {
+            throw new IllegalStateException("用户名已存在");
+        }
+        
         User user = new User();
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));

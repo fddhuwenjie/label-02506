@@ -16,6 +16,7 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, Long
     List<Prescription> findByDoctorIdOrderByCreateTimeDesc(Long doctorId);
     List<Prescription> findAllByOrderByCreateTimeDesc();
     List<Prescription> findByStatus(Integer status);
+    List<Prescription> findByDoctorIdAndStatus(Long doctorId, Integer status);
     Optional<Prescription> findByMedicalRecordId(Long medicalRecordId);
     
     @Query("SELECT p FROM Prescription p WHERE p.createTime BETWEEN ?1 AND ?2")

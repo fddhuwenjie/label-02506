@@ -47,4 +47,7 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
 
     @Query("SELECT r FROM Registration r WHERE r.regDate BETWEEN ?1 AND ?2 AND r.status <> 3 ORDER BY r.regDate DESC, r.queueNo")
     List<Registration> findByDateRangeOrderByDateDesc(LocalDate startDate, LocalDate endDate);
+    
+    @Query("SELECT r FROM Registration r WHERE r.doctor.id = ?1 AND r.regDate BETWEEN ?2 AND ?3 AND r.status <> 3 ORDER BY r.regDate DESC, r.queueNo")
+    List<Registration> findByDoctorIdAndDateRangeOrderByDateDesc(Long doctorId, LocalDate startDate, LocalDate endDate);
 }

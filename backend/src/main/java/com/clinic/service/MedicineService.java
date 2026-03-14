@@ -38,16 +38,32 @@ public class MedicineService {
     
     @Transactional
     public Medicine save(Medicine medicine) {
+        if (medicine == null) {
+            throw new IllegalArgumentException("药品信息不能为空");
+        }
+        if (medicine.getMedicineName() == null || medicine.getMedicineName().isBlank()) {
+            throw new IllegalArgumentException("药品名称不能为空");
+        }
+        if (medicine.getMedicineCode() == null || medicine.getMedicineCode().isBlank()) {
+            throw new IllegalArgumentException("药品编码不能为空");
+        }
         return medicineRepository.save(medicine);
     }
     
     @Transactional
     public void updateStock(Long id, Integer quantity) {
-        Medicine medicine = medicineRepository.findById(id).orElseThrow();
+        if (id == null) {
+            throw new IllegalArgumentException("药品ID不能为空");
+        }
+        if (quantity == null) {
+            throw new IllegalArgumentException("数量不能为空");
+        }
+        Medicine medicine = medicineRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("药品不存在"));
         int currentStock = medicine.getStockQuantity() == null ? 0 : medicine.getStockQuantity();
         int nextStock = currentStock + quantity;
         if (nextStock < 0) {
-            throw new IllegalArgumentException("药品库存不足，无法发药");
+            throw new IllegalArgumentException("药品库存不足（当前库存：" + currentStock + "，需要：" + Math.abs(quantity) + "）");
         }
         medicine.setStockQuantity(nextStock);
         medicineRepository.save(medicine);
@@ -55,7 +71,14 @@ public class MedicineService {
     
     @Transactional
     public void updateWarningQuantity(Long id, Integer quantity) {
-        Medicine medicine = medicineRepository.findById(id).orElseThrow();
+        if (id == null) {
+            throw new IllegalArgumentException("药品ID不能为空");
+        }
+        if (quantity == null || quantity < 0) {
+            throw new IllegalArgumentException("预警数量不能为空且不能为负数");
+        }
+        Medicine medicine = medicineRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("药品不存在"));
         medicine.setWarningQuantity(quantity);
         medicineRepository.save(medicine);
     }

@@ -82,6 +82,14 @@ public class PatientController {
                                     RedirectAttributes redirectAttributes) {
         LocalDate regDate = LocalDate.parse(date);
         
+        if (!registrationService.hasSchedule(doctorId, regDate, timePeriod)) {
+            String periodText = timePeriod == 1 ? "上午" : "下午";
+            String weekDayText = getWeekDayText(regDate.getDayOfWeek().getValue());
+            redirectAttributes.addFlashAttribute("error", 
+                "该医生" + weekDayText + periodText + "没有出诊安排，请选择其他时间");
+            return "redirect:/patient/registration";
+        }
+        
         if (!registrationService.canRegister(doctorId, regDate, timePeriod)) {
             redirectAttributes.addFlashAttribute("error", "该时段已约满");
             return "redirect:/patient/registration";
@@ -106,7 +114,22 @@ public class PatientController {
     }
     
     @PostMapping("/registration/{id}/cancel")
-    public String cancelRegistration(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+    public String cancelRegistration(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                     @PathVariable Long id, 
+                                     RedirectAttributes redirectAttributes) {
+        Registration reg = registrationService.findById(id);
+        if (reg == null) {
+            redirectAttributes.addFlashAttribute("error", "挂号记录不存在");
+            return "redirect:/patient/my-registrations";
+        }
+        if (!reg.getPatient().getId().equals(userDetails.getId())) {
+            redirectAttributes.addFlashAttribute("error", "无权取消该挂号");
+            return "redirect:/patient/my-registrations";
+        }
+        if (reg.getStatus() != 0) {
+            redirectAttributes.addFlashAttribute("error", "该挂号状态不允许取消");
+            return "redirect:/patient/my-registrations";
+        }
         registrationService.cancelRegistration(id, "病人取消");
         redirectAttributes.addFlashAttribute("message", "挂号已取消");
         return "redirect:/patient/my-registrations";
@@ -120,8 +143,20 @@ public class PatientController {
     }
     
     @GetMapping("/records/{id}")
-    public String recordDetail(@PathVariable Long id, Model model) {
-        model.addAttribute("record", recordService.findById(id));
+    public String recordDetail(@AuthenticationPrincipal CustomUserDetails userDetails,
+                               @PathVariable Long id, 
+                               Model model,
+                               RedirectAttributes redirectAttributes) {
+        MedicalRecord record = recordService.findById(id);
+        if (record == null) {
+            redirectAttributes.addFlashAttribute("error", "病历不存在");
+            return "redirect:/patient/records";
+        }
+        if (!record.getPatient().getId().equals(userDetails.getId())) {
+            redirectAttributes.addFlashAttribute("error", "无权查看该病历");
+            return "redirect:/patient/records";
+        }
+        model.addAttribute("record", record);
         return "patient/record-detail";
     }
     
@@ -133,14 +168,38 @@ public class PatientController {
     }
     
     @GetMapping("/prescriptions/{id}")
-    public String prescriptionDetail(@PathVariable Long id, Model model) {
-        model.addAttribute("prescription", prescriptionService.findById(id));
+    public String prescriptionDetail(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                     @PathVariable Long id, 
+                                     Model model,
+                                     RedirectAttributes redirectAttributes) {
+        Prescription prescription = prescriptionService.findById(id);
+        if (prescription == null) {
+            redirectAttributes.addFlashAttribute("error", "处方不存在");
+            return "redirect:/patient/prescriptions";
+        }
+        if (!prescription.getPatient().getId().equals(userDetails.getId())) {
+            redirectAttributes.addFlashAttribute("error", "无权查看该处方");
+            return "redirect:/patient/prescriptions";
+        }
+        model.addAttribute("prescription", prescription);
         return "patient/prescription-detail";
     }
     
     @GetMapping("/prescriptions/{id}/print")
-    public String prescriptionPrint(@PathVariable Long id, Model model) {
-        model.addAttribute("prescription", prescriptionService.findById(id));
+    public String prescriptionPrint(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                    @PathVariable Long id, 
+                                    Model model,
+                                    RedirectAttributes redirectAttributes) {
+        Prescription prescription = prescriptionService.findById(id);
+        if (prescription == null) {
+            redirectAttributes.addFlashAttribute("error", "处方不存在");
+            return "redirect:/patient/prescriptions";
+        }
+        if (!prescription.getPatient().getId().equals(userDetails.getId())) {
+            redirectAttributes.addFlashAttribute("error", "无权打印该处方");
+            return "redirect:/patient/prescriptions";
+        }
+        model.addAttribute("prescription", prescription);
         return "patient/prescription-print";
     }
     
@@ -175,9 +234,26 @@ public class PatientController {
             User operator = userService.findById(userDetails.getId());
             paymentService.pay(id, paidAmount, paymentMethod, operator);
             redirectAttributes.addFlashAttribute("message", "缴费成功");
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
         } catch (Exception ex) {
             redirectAttributes.addFlashAttribute("error", "缴费失败，请稍后重试");
         }
         return "redirect:/patient/payments";
+    }
+    
+    private String getWeekDayText(int weekDay) {
+        return switch (weekDay) {
+            case 1 -> "周一";
+            case 2 -> "周二";
+            case 3 -> "周三";
+            case 4 -> "周四";
+            case 5 -> "周五";
+            case 6 -> "周六";
+            case 7 -> "周日";
+            default -> "";
+        };
     }
 }

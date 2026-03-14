@@ -9,4 +9,5 @@ import java.util.List;
 public interface RegistrationRuleRepository extends JpaRepository<RegistrationRule, Long> {
     List<RegistrationRule> findByDoctorIdAndStatus(Long doctorId, Integer status);
     List<RegistrationRule> findByDoctorIdAndWeekDayAndStatus(Long doctorId, Integer weekDay, Integer status);
+    List<RegistrationRule> findByDoctorId(Long doctorId);
 }

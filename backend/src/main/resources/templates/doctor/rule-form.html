@@ -12,6 +12,14 @@
     
     <div class="card">
         <div class="card-body">
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <i class="bi bi-exclamation-circle me-2"></i><span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${message}" class="alert alert-success alert-dismissible fade show">
+                <i class="bi bi-check-circle me-2"></i><span th:text="${message}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
             <form th:action="@{/doctor/rules/save}" method="post">
                 <input type="hidden" name="id" th:value="${rule?.id}">
                 

@@ -84,8 +84,15 @@ public class DoctorController {
                                            @RequestParam Integer timePeriod,
                                            RedirectAttributes redirectAttributes) {
         LocalDate regDate = LocalDate.parse(date);
+        if (!registrationService.hasSchedule(userDetails.getId(), regDate, timePeriod)) {
+            String periodText = timePeriod == 1 ? "上午" : "下午";
+            String weekDayText = getWeekDayText(regDate.getDayOfWeek().getValue());
+            redirectAttributes.addFlashAttribute("error", 
+                "您在" + weekDayText + periodText + "没有出诊安排，请先在「挂号规则」中配置出诊时间");
+            return "redirect:/doctor/registrations/manual";
+        }
         if (!registrationService.canRegister(userDetails.getId(), regDate, timePeriod)) {
-            redirectAttributes.addFlashAttribute("error", "该时段已约满或未配置出诊规则");
+            redirectAttributes.addFlashAttribute("error", "该时段已约满");
             return "redirect:/doctor/registrations/manual";
         }
         User patient = userService.findById(patientId);
@@ -105,21 +112,47 @@ public class DoctorController {
     
     @PostMapping("/registrations/{id}/call")
     @ResponseBody
-    public ResponseEntity<ApiResponse<Void>> callPatient(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> callPatient(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                          @PathVariable Long id) {
+        Registration reg = registrationService.findById(id);
+        if (reg == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("挂号记录不存在"));
+        }
+        if (!reg.getDoctor().getId().equals(userDetails.getId())) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("无权操作该挂号"));
+        }
+        if (reg.getStatus() != 0) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("只有待就诊状态的挂号才能叫号"));
+        }
         try {
-            registrationService.updateStatus(id, 1);
+            registrationService.callPatient(id);
             return ResponseEntity.ok(ApiResponse.success("已叫号"));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage()));
         } catch (Exception ex) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("叫号失败，请确认挂号记录有效"));
+            return ResponseEntity.badRequest().body(ApiResponse.failure("叫号失败，请稍后重试"));
         }
     }
     
     @PostMapping("/registrations/{id}/complete")
     @ResponseBody
-    public ResponseEntity<ApiResponse<Void>> completeVisit(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> completeVisit(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                            @PathVariable Long id) {
+        Registration reg = registrationService.findById(id);
+        if (reg == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("挂号记录不存在"));
+        }
+        if (!reg.getDoctor().getId().equals(userDetails.getId())) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("无权操作该挂号"));
+        }
+        if (reg.getStatus() != 1) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("只有就诊中状态的挂号才能完诊"));
+        }
         try {
-            registrationService.updateStatus(id, 2);
+            registrationService.completeVisit(id);
             return ResponseEntity.ok(ApiResponse.success("就诊已完成"));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage()));
         } catch (Exception ex) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("完诊失败，请稍后重试"));
         }
@@ -127,23 +160,28 @@ public class DoctorController {
 
     // 费用管理
     @GetMapping("/payments")
-    public String paymentManagement(@RequestParam(required = false) Long registrationId, Model model) {
-        model.addAttribute("allPayments", paymentService.findAllForDoctor());
+    public String paymentManagement(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                    @RequestParam(required = false) Long registrationId, 
+                                    Model model) {
+        model.addAttribute("allPayments", paymentService.findByDoctor(userDetails.getId()));
         model.addAttribute("registrationId", registrationId);
         if (registrationId != null) {
             Registration registration = registrationService.findById(registrationId);
-            model.addAttribute("selectedRegistration", registration);
-            model.addAttribute("registrationPayments", paymentService.findByRegistration(registrationId));
+            if (registration != null && registration.getDoctor().getId().equals(userDetails.getId())) {
+                model.addAttribute("selectedRegistration", registration);
+                model.addAttribute("registrationPayments", paymentService.findByRegistration(registrationId));
+            }
         }
         return "doctor/payment-management";
     }
 
     @GetMapping("/payments/registrations-for-calc")
     @ResponseBody
-    public ResponseEntity<ApiResponse<List<java.util.Map<String, Object>>>> getRegistrationsForCalc() {
+    public ResponseEntity<ApiResponse<List<java.util.Map<String, Object>>>> getRegistrationsForCalc(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         LocalDate today = LocalDate.now();
         LocalDate weekAgo = today.minusDays(7);
-        List<Registration> registrations = registrationService.findRecentRegistrations(weekAgo, today);
+        List<Registration> registrations = registrationService.findByDoctorAndDateRange(userDetails.getId(), weekAgo, today);
         List<java.util.Map<String, Object>> result = registrations.stream().map(reg -> {
             java.util.Map<String, Object> map = new java.util.HashMap<>();
             map.put("id", reg.getId());
@@ -168,6 +206,10 @@ public class DoctorController {
             redirectAttributes.addFlashAttribute("error", "挂号记录不存在");
             return "redirect:/doctor/payments";
         }
+        if (!registration.getDoctor().getId().equals(userDetails.getId())) {
+            redirectAttributes.addFlashAttribute("error", "无权操作该挂号的费用");
+            return "redirect:/doctor/payments";
+        }
         if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
             redirectAttributes.addFlashAttribute("error", "费用金额必须大于 0");
             return "redirect:/doctor/payments?registrationId=" + registrationId;
@@ -184,6 +226,16 @@ public class DoctorController {
                                 @RequestParam BigDecimal paidAmount,
                                 @RequestParam Integer paymentMethod,
                                 RedirectAttributes redirectAttributes) {
+        Payment payment = paymentService.findById(id);
+        if (payment == null) {
+            redirectAttributes.addFlashAttribute("error", "缴费单不存在");
+            return "redirect:/doctor/payments";
+        }
+        Registration reg = payment.getRegistration();
+        if (reg != null && !reg.getDoctor().getId().equals(userDetails.getId())) {
+            redirectAttributes.addFlashAttribute("error", "无权操作该缴费单");
+            return "redirect:/doctor/payments";
+        }
         if (paidAmount.compareTo(BigDecimal.ZERO) <= 0) {
             redirectAttributes.addFlashAttribute("error", "缴费金额必须大于 0");
             return "redirect:/doctor/payments";
@@ -192,8 +244,12 @@ public class DoctorController {
         try {
             paymentService.pay(id, paidAmount, paymentMethod, operator);
             redirectAttributes.addFlashAttribute("message", "缴费录入成功");
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
         } catch (Exception ex) {
-            redirectAttributes.addFlashAttribute("error", "缴费录入失败，请确认缴费单有效");
+            redirectAttributes.addFlashAttribute("error", "缴费录入失败，请稍后重试");
         }
         return "redirect:/doctor/payments";
     }
@@ -203,6 +259,16 @@ public class DoctorController {
                                   @PathVariable Long id,
                                   @RequestParam String arrearsRemark,
                                   RedirectAttributes redirectAttributes) {
+        Payment payment = paymentService.findById(id);
+        if (payment == null) {
+            redirectAttributes.addFlashAttribute("error", "缴费单不存在");
+            return "redirect:/doctor/payments";
+        }
+        Registration reg = payment.getRegistration();
+        if (reg != null && !reg.getDoctor().getId().equals(userDetails.getId())) {
+            redirectAttributes.addFlashAttribute("error", "无权操作该缴费单");
+            return "redirect:/doctor/payments";
+        }
         if (arrearsRemark == null || arrearsRemark.isBlank()) {
             redirectAttributes.addFlashAttribute("error", "请填写欠费说明");
             return "redirect:/doctor/payments";
@@ -211,8 +277,10 @@ public class DoctorController {
         try {
             paymentService.registerArrears(id, arrearsRemark, operator);
             redirectAttributes.addFlashAttribute("message", "欠费登记成功");
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
         } catch (Exception ex) {
-            redirectAttributes.addFlashAttribute("error", "欠费登记失败，请确认缴费单有效");
+            redirectAttributes.addFlashAttribute("error", "欠费登记失败，请稍后重试");
         }
         return "redirect:/doctor/payments";
     }
@@ -255,8 +323,19 @@ public class DoctorController {
     
     // 就诊接诊
     @GetMapping("/visit/{registrationId}")
-    public String visitPage(@PathVariable Long registrationId, Model model) {
+    public String visitPage(@AuthenticationPrincipal CustomUserDetails userDetails,
+                            @PathVariable Long registrationId, 
+                            Model model,
+                            RedirectAttributes redirectAttributes) {
         Registration reg = registrationService.findById(registrationId);
+        if (reg == null) {
+            redirectAttributes.addFlashAttribute("error", "挂号记录不存在");
+            return "redirect:/doctor/registrations";
+        }
+        if (!reg.getDoctor().getId().equals(userDetails.getId())) {
+            redirectAttributes.addFlashAttribute("error", "无权接诊该挂号");
+            return "redirect:/doctor/registrations";
+        }
         MedicalRecord record = recordService.findByRegistration(registrationId);
         PatientProfile profile = userService.getPatientProfile(reg.getPatient().getId());
         Prescription prescription = null;
@@ -283,6 +362,10 @@ public class DoctorController {
         Registration reg = registrationService.findById(registrationId);
         if (reg == null) {
             redirectAttributes.addFlashAttribute("error", "挂号记录不存在");
+            return "redirect:/doctor/registrations";
+        }
+        if (!reg.getDoctor().getId().equals(userDetails.getId())) {
+            redirectAttributes.addFlashAttribute("error", "无权操作该挂号");
             return "redirect:/doctor/registrations";
         }
         if (quantity == null || quantity <= 0) {
@@ -331,19 +414,28 @@ public class DoctorController {
     
     @PostMapping("/visit/{registrationId}/start")
     @ResponseBody
-    public ResponseEntity<ApiResponse<Void>> startVisit(@PathVariable Long registrationId) {
+    public ResponseEntity<ApiResponse<Void>> startVisit(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                         @PathVariable Long registrationId) {
         Registration reg = registrationService.findById(registrationId);
         if (reg == null) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("挂号记录不存在"));
         }
+        if (!reg.getDoctor().getId().equals(userDetails.getId())) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("无权操作该挂号"));
+        }
+        if (reg.getStatus() != 0 && reg.getStatus() != 1) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("该挂号状态不允许开始接诊"));
+        }
         try {
-            registrationService.updateStatus(registrationId, 1);
+            registrationService.startVisit(registrationId);
 
             MedicalRecord record = recordService.findByRegistration(registrationId);
             if (record == null) {
                 recordService.createRecord(reg);
             }
             return ResponseEntity.ok(ApiResponse.success("已开始接诊，请录入病历"));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage()));
         } catch (Exception ex) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("开始接诊失败，请稍后重试"));
         }
@@ -364,6 +456,13 @@ public class DoctorController {
                                                          @RequestParam(required = false) Integer quantity,
                                                          @RequestParam(required = false) String dosage,
                                                          @RequestParam(required = false) String frequency) {
+        Registration reg = registrationService.findById(registrationId);
+        if (reg == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("挂号记录不存在"));
+        }
+        if (!reg.getDoctor().getId().equals(userDetails.getId())) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("无权操作该挂号"));
+        }
         if (chiefComplaint == null || chiefComplaint.isBlank()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("请填写主诉"));
         }
@@ -372,11 +471,6 @@ public class DoctorController {
         }
         if (treatmentPlan == null || treatmentPlan.isBlank()) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("请填写治疗方案"));
-        }
-
-        Registration reg = registrationService.findById(registrationId);
-        if (reg == null) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("挂号记录不存在"));
         }
 
         try {
@@ -440,11 +534,24 @@ public class DoctorController {
                 successMessage = "病历已保存，处方处理中，请到处方管理确认";
             }
 
-            registrationService.updateStatus(registrationId, 2);
+            registrationService.completeVisit(registrationId);
             return ResponseEntity.ok(ApiResponse.success(successMessage));
         } catch (Exception ex) {
             log.error("保存病历失败 registrationId={}", registrationId, ex);
-            return ResponseEntity.ok(ApiResponse.success("病历已保存，就诊已完成"));
+            return ResponseEntity.badRequest().body(ApiResponse.failure("保存病历失败：" + ex.getMessage()));
         }
+    }
+    
+    private String getWeekDayText(int weekDay) {
+        return switch (weekDay) {
+            case 1 -> "周一";
+            case 2 -> "周二";
+            case 3 -> "周三";
+            case 4 -> "周四";
+            case 5 -> "周五";
+            case 6 -> "周六";
+            case 7 -> "周日";
+            default -> "";
+        };
     }
 }

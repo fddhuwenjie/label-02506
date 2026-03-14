@@ -67,6 +67,16 @@ public class ExportController {
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             HttpServletResponse response) throws IOException {
         
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("开始日期和结束日期不能为空");
+        }
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("结束日期不能早于开始日期");
+        }
+        if (startDate.plusYears(1).isBefore(endDate)) {
+            throw new IllegalArgumentException("日期范围不能超过一年");
+        }
+        
         setExcelResponse(response, "统计报表_" + startDate + "_" + endDate);
         
         List<DailyStatDTO> dailyStats = statisticsService.getDailyStats(startDate, endDate);

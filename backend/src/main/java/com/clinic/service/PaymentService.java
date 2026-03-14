@@ -46,6 +46,10 @@ public class PaymentService {
     public List<Payment> findAllForDoctor() {
         return paymentRepository.findAllByOrderByCreateTimeDesc();
     }
+    
+    public List<Payment> findByDoctor(Long doctorId) {
+        return paymentRepository.findByDoctorIdOrderByCreateTimeDesc(doctorId);
+    }
 
     public List<Payment> findArrearsForDoctor() {
         return paymentRepository.findByStatusOrderByCreateTimeDesc(2);
@@ -53,17 +57,30 @@ public class PaymentService {
     
     @Transactional
     public Payment createPayment(User patient, Integer feeType, BigDecimal amount) {
+        if (patient == null) {
+            throw new IllegalArgumentException("病人信息不能为空");
+        }
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("费用金额必须大于0");
+        }
         Payment payment = new Payment();
         payment.setPaymentNo(generatePaymentNo());
         payment.setPatient(patient);
         payment.setFeeType(feeType);
         payment.setTotalAmount(amount);
+        payment.setPaidAmount(BigDecimal.ZERO);
         payment.setStatus(0);
         return paymentRepository.save(payment);
     }
 
     @Transactional
     public Payment createPayment(User patient, Registration registration, Integer feeType, BigDecimal amount, String remark, User operator) {
+        if (patient == null) {
+            throw new IllegalArgumentException("病人信息不能为空");
+        }
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("费用金额必须大于0");
+        }
         Payment payment = new Payment();
         payment.setPaymentNo(generatePaymentNo());
         payment.setPatient(patient);
@@ -108,14 +125,26 @@ public class PaymentService {
     @Transactional
     public void pay(Long id, BigDecimal amount, Integer method, User operator) {
         Payment payment = paymentRepository.findById(id).orElseThrow();
+        
+        if (payment.getStatus() == 1) {
+            throw new IllegalStateException("该缴费单已支付完成，无需重复支付");
+        }
+        
         BigDecimal currentPaid = payment.getPaidAmount() != null ? payment.getPaidAmount() : BigDecimal.ZERO;
+        BigDecimal totalAmount = payment.getTotalAmount() != null ? payment.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal remaining = totalAmount.subtract(currentPaid);
+        
+        if (amount.compareTo(remaining) > 0) {
+            throw new IllegalArgumentException("支付金额超过剩余应付金额（剩余：" + remaining + "元）");
+        }
+        
         BigDecimal nextPaid = currentPaid.add(amount);
         payment.setPaidAmount(nextPaid);
         payment.setPaymentMethod(method);
         payment.setOperator(operator);
         payment.setPayTime(LocalDateTime.now());
         
-        if (nextPaid.compareTo(payment.getTotalAmount()) >= 0) {
+        if (nextPaid.compareTo(totalAmount) >= 0) {
             payment.setStatus(1);
         } else {
             payment.setStatus(2);
@@ -126,6 +155,9 @@ public class PaymentService {
     @Transactional
     public void registerArrears(Long id, String arrearsRemark, User operator) {
         Payment payment = paymentRepository.findById(id).orElseThrow();
+        if (payment.getStatus() == 1) {
+            throw new IllegalStateException("该缴费单已支付完成，无需登记欠费");
+        }
         String oldRemark = payment.getRemark() == null ? "" : payment.getRemark();
         String append = "欠费登记：" + arrearsRemark;
         payment.setRemark(oldRemark.isBlank() ? append : oldRemark + "；" + append);

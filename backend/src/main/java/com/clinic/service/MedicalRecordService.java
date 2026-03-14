@@ -43,6 +43,15 @@ public class MedicalRecordService {
     
     @Transactional
     public MedicalRecord createRecord(Registration registration) {
+        if (registration == null) {
+            throw new IllegalArgumentException("挂号记录不能为空");
+        }
+        if (registration.getPatient() == null) {
+            throw new IllegalArgumentException("挂号记录缺少病人信息");
+        }
+        if (registration.getDoctor() == null) {
+            throw new IllegalArgumentException("挂号记录缺少医生信息");
+        }
         MedicalRecord record = new MedicalRecord();
         record.setRecordNo(generateRecordNo());
         record.setRegistration(registration);

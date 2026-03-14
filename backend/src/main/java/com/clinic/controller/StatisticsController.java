@@ -27,6 +27,15 @@ public class StatisticsController {
         if (startDate == null) startDate = LocalDate.now().withDayOfMonth(1);
         if (endDate == null) endDate = LocalDate.now();
         
+        // 确保结束日期不早于开始日期
+        if (endDate.isBefore(startDate)) {
+            endDate = startDate;
+        }
+        // 限制日期范围不超过一年
+        if (startDate.plusYears(1).isBefore(endDate)) {
+            startDate = endDate.minusYears(1);
+        }
+        
         StatisticsDTO stats = statisticsService.getStatistics(startDate, endDate);
         model.addAttribute("stats", stats);
         model.addAttribute("startDate", startDate);

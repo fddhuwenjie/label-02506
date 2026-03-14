@@ -39,12 +39,33 @@ public class PrescriptionService {
         return prescriptionRepository.findByStatus(0);
     }
     
+    public List<Prescription> findPendingAuditByDoctor(Long doctorId) {
+        return prescriptionRepository.findByDoctorIdAndStatus(doctorId, 0);
+    }
+    
     public List<Prescription> findAll() {
         return prescriptionRepository.findAllByOrderByCreateTimeDesc();
     }
     
+    public List<Prescription> findByDoctor(Long doctorId) {
+        return prescriptionRepository.findByDoctorIdOrderByCreateTimeDesc(doctorId);
+    }
+    
     @Transactional
     public Prescription createPrescription(MedicalRecord record, List<PrescriptionDetail> details) {
+        if (record == null) {
+            throw new IllegalArgumentException("病历记录不能为空");
+        }
+        if (record.getPatient() == null) {
+            throw new IllegalArgumentException("病历缺少病人信息");
+        }
+        if (record.getDoctor() == null) {
+            throw new IllegalArgumentException("病历缺少医生信息");
+        }
+        if (details == null || details.isEmpty()) {
+            throw new IllegalArgumentException("处方明细不能为空");
+        }
+        
         Prescription prescription = new Prescription();
         prescription.setPrescriptionNo(generatePrescriptionNo());
         prescription.setMedicalRecord(record);
@@ -55,6 +76,12 @@ public class PrescriptionService {
         
         BigDecimal total = BigDecimal.ZERO;
         for (PrescriptionDetail detail : details) {
+            if (detail.getUnitPrice() == null) {
+                throw new IllegalArgumentException("药品单价不能为空");
+            }
+            if (detail.getQuantity() == null || detail.getQuantity() <= 0) {
+                throw new IllegalArgumentException("药品数量必须大于0");
+            }
             detail.setPrescription(prescription);
             detail.setAmount(detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity())));
             total = total.add(detail.getAmount());
@@ -74,6 +101,9 @@ public class PrescriptionService {
     @Transactional
     public void auditPrescription(Long id, User auditDoctor) {
         Prescription prescription = prescriptionRepository.findById(id).orElseThrow();
+        if (prescription.getStatus() != null && prescription.getStatus() >= 1) {
+            throw new IllegalStateException("该处方已审核，无需重复审核");
+        }
         prescription.setStatus(1);
         prescription.setAuditDoctor(auditDoctor);
         prescription.setAuditTime(LocalDateTime.now());
@@ -83,6 +113,12 @@ public class PrescriptionService {
     @Transactional
     public void dispensePrescription(Long id) {
         Prescription prescription = prescriptionRepository.findById(id).orElseThrow();
+        if (prescription.getStatus() != null && prescription.getStatus() >= 2) {
+            throw new IllegalStateException("该处方已发药，无需重复发药");
+        }
+        if (prescription.getStatus() == null || prescription.getStatus() < 1) {
+            throw new IllegalStateException("处方未审核，无法发药");
+        }
         
         // 扣减库存
         for (PrescriptionDetail detail : prescription.getDetails()) {

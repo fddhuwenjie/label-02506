@@ -32,4 +32,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByStatusOrderByCreateTimeDesc(Integer status);
 
     List<Payment> findAllByOrderByCreateTimeDesc();
+    
+    @Query("SELECT p FROM Payment p WHERE p.registration.doctor.id = ?1 ORDER BY p.createTime DESC")
+    List<Payment> findByDoctorIdOrderByCreateTimeDesc(Long doctorId);
 }

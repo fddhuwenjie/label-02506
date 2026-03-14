@@ -51,6 +51,18 @@ public class RegistrationService {
         }
         return false;
     }
+    
+    public boolean hasSchedule(Long doctorId, LocalDate date, Integer timePeriod) {
+        int weekDay = date.getDayOfWeek().getValue();
+        List<RegistrationRule> rules = ruleRepository.findByDoctorIdAndWeekDayAndStatus(doctorId, weekDay, 1);
+        
+        for (RegistrationRule rule : rules) {
+            if (rule.getTimePeriod().equals(timePeriod)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public boolean hasDuplicateRegistration(Long patientId, Long doctorId, LocalDate date, Integer timePeriod) {
         return registrationRepository.existsDuplicateActiveRegistration(patientId, doctorId, date, timePeriod);
@@ -58,6 +70,18 @@ public class RegistrationService {
     
     @Transactional
     public Registration createRegistration(User patient, User doctor, LocalDate date, Integer timePeriod, Integer source) {
+        if (patient == null) {
+            throw new IllegalArgumentException("病人信息不能为空");
+        }
+        if (doctor == null) {
+            throw new IllegalArgumentException("医生信息不能为空");
+        }
+        if (date == null) {
+            throw new IllegalArgumentException("挂号日期不能为空");
+        }
+        if (timePeriod == null) {
+            throw new IllegalArgumentException("时段不能为空");
+        }
         if (hasDuplicateRegistration(patient.getId(), doctor.getId(), date, timePeriod)) {
             throw new IllegalStateException("同一病人同一医生同一时段已存在有效挂号");
         }
@@ -97,8 +121,41 @@ public class RegistrationService {
     @Transactional
     public void cancelRegistration(Long id, String reason) {
         Registration reg = registrationRepository.findById(id).orElseThrow();
+        if (reg.getStatus() != 0) {
+            throw new IllegalStateException("只有待就诊状态的挂号才能取消");
+        }
         reg.setStatus(3);
         reg.setCancelReason(reason);
+        registrationRepository.save(reg);
+    }
+    
+    @Transactional
+    public void callPatient(Long id) {
+        Registration reg = registrationRepository.findById(id).orElseThrow();
+        if (reg.getStatus() != 0) {
+            throw new IllegalStateException("只有待就诊状态的挂号才能叫号");
+        }
+        reg.setStatus(1);
+        registrationRepository.save(reg);
+    }
+    
+    @Transactional
+    public void startVisit(Long id) {
+        Registration reg = registrationRepository.findById(id).orElseThrow();
+        if (reg.getStatus() != 0 && reg.getStatus() != 1) {
+            throw new IllegalStateException("该挂号状态不允许开始接诊");
+        }
+        reg.setStatus(1);
+        registrationRepository.save(reg);
+    }
+    
+    @Transactional
+    public void completeVisit(Long id) {
+        Registration reg = registrationRepository.findById(id).orElseThrow();
+        if (reg.getStatus() != 1) {
+            throw new IllegalStateException("只有就诊中状态的挂号才能完诊");
+        }
+        reg.setStatus(2);
         registrationRepository.save(reg);
     }
     
@@ -118,28 +175,64 @@ public class RegistrationService {
         return ruleRepository.findAll();
     }
     
+    public List<RegistrationRule> findRulesByDoctor(Long doctorId) {
+        return ruleRepository.findByDoctorId(doctorId);
+    }
+    
     public RegistrationRule findRuleById(Long id) {
         return ruleRepository.findById(id).orElse(null);
     }
     
     @Transactional
     public void saveRule(RegistrationRule rule) {
+        if (rule == null) {
+            throw new IllegalArgumentException("规则不能为空");
+        }
+        if (rule.getDoctor() == null) {
+            throw new IllegalArgumentException("必须指定医生");
+        }
+        if (rule.getWeekDay() == null || rule.getWeekDay() < 1 || rule.getWeekDay() > 7) {
+            throw new IllegalArgumentException("星期必须在1-7之间");
+        }
+        if (rule.getTimePeriod() == null || (rule.getTimePeriod() != 1 && rule.getTimePeriod() != 2)) {
+            throw new IllegalArgumentException("时段必须是1（上午）或2（下午）");
+        }
+        if (rule.getMaxCount() == null || rule.getMaxCount() <= 0) {
+            throw new IllegalArgumentException("最大挂号数必须大于0");
+        }
+        if (rule.getFee() == null || rule.getFee().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("挂号费不能为负数");
+        }
         ruleRepository.save(rule);
     }
     
     @Transactional
     public void toggleRuleStatus(Long id) {
-        RegistrationRule rule = ruleRepository.findById(id).orElseThrow();
+        if (id == null) {
+            throw new IllegalArgumentException("规则ID不能为空");
+        }
+        RegistrationRule rule = ruleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("规则不存在"));
         rule.setStatus(rule.getStatus() == 1 ? 0 : 1);
         ruleRepository.save(rule);
     }
     
     @Transactional
     public void deleteRule(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("规则ID不能为空");
+        }
+        if (!ruleRepository.existsById(id)) {
+            throw new IllegalArgumentException("规则不存在");
+        }
         ruleRepository.deleteById(id);
     }
 
     public List<Registration> findRecentRegistrations(LocalDate startDate, LocalDate endDate) {
         return registrationRepository.findByDateRangeOrderByDateDesc(startDate, endDate);
+    }
+    
+    public List<Registration> findByDoctorAndDateRange(Long doctorId, LocalDate startDate, LocalDate endDate) {
+        return registrationRepository.findByDoctorIdAndDateRangeOrderByDateDesc(doctorId, startDate, endDate);
     }
 }
