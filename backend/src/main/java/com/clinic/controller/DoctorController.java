@@ -63,9 +63,11 @@ public class DoctorController {
     
     // 挂号管理
     @GetMapping("/registrations")
-    public String registrationList(@RequestParam(required = false) String date, Model model) {
+    public String registrationList(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                   @RequestParam(required = false) String date, 
+                                   Model model) {
         LocalDate queryDate = date != null ? LocalDate.parse(date) : LocalDate.now();
-        model.addAttribute("registrations", registrationService.findByDate(queryDate));
+        model.addAttribute("registrations", registrationService.findByDoctorAndDate(userDetails.getId(), queryDate));
         model.addAttribute("queryDate", queryDate);
         return "doctor/registration-list";
     }
