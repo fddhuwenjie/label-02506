@@ -103,11 +103,12 @@ public class DoctorController {
             return "redirect:/doctor/registrations/manual";
         }
         User doctor = userService.findById(userDetails.getId());
-        if (registrationService.hasDuplicateRegistration(patient.getId(), doctor.getId(), regDate, timePeriod)) {
-            redirectAttributes.addFlashAttribute("error", "重复挂号：该病人该时段已挂号");
+        try {
+            registrationService.createRegistration(patient, doctor, regDate, timePeriod, 1);
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
             return "redirect:/doctor/registrations/manual";
         }
-        registrationService.createRegistration(patient, doctor, regDate, timePeriod, 1);
         redirectAttributes.addFlashAttribute("message", "现场挂号成功");
         return "redirect:/doctor/registrations";
     }
