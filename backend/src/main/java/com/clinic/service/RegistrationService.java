@@ -2,9 +2,12 @@ package com.clinic.service;
 
 import com.clinic.entity.Registration;
 import com.clinic.entity.RegistrationRule;
+import com.clinic.entity.RegistrationSlot;
 import com.clinic.entity.User;
 import com.clinic.repository.RegistrationRepository;
 import com.clinic.repository.RegistrationRuleRepository;
+import com.clinic.repository.RegistrationSlotRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +21,7 @@ import java.util.List;
 public class RegistrationService {
     private final RegistrationRepository registrationRepository;
     private final RegistrationRuleRepository ruleRepository;
+    private final RegistrationSlotRepository slotRepository;
     
     public List<Registration> findByPatient(Long patientId) {
         return registrationRepository.findByPatientIdOrderByRegDateDesc(patientId);
@@ -45,8 +49,11 @@ public class RegistrationService {
         
         for (RegistrationRule rule : rules) {
             if (rule.getTimePeriod().equals(timePeriod)) {
-                Integer count = registrationRepository.countByDoctorAndDateAndPeriod(doctorId, date, timePeriod);
-                return count < rule.getMaxCount();
+                var slotOpt = slotRepository.findByDoctorIdAndRegDateAndTimePeriod(doctorId, date, timePeriod);
+                if (slotOpt.isPresent()) {
+                    return slotOpt.get().getCurrentCount() < slotOpt.get().getMaxCount();
+                }
+                return 0 < rule.getMaxCount();
             }
         }
         return false;
@@ -89,15 +96,31 @@ public class RegistrationService {
         int weekDay = date.getDayOfWeek().getValue();
         List<RegistrationRule> rules = ruleRepository.findByDoctorIdAndWeekDayAndStatus(doctor.getId(), weekDay, 1);
         
+        RegistrationRule matchingRule = null;
         BigDecimal fee = BigDecimal.ZERO;
         for (RegistrationRule rule : rules) {
             if (rule.getTimePeriod().equals(timePeriod)) {
+                matchingRule = rule;
                 fee = rule.getFee();
                 break;
             }
         }
         
-        Integer queueNo = registrationRepository.findMaxQueueNo(doctor.getId(), date, timePeriod) + 1;
+        if (matchingRule == null) {
+            throw new IllegalStateException("该医生此时段无排班");
+        }
+        
+        RegistrationSlot slot = getOrCreateSlotWithLock(doctor.getId(), date, timePeriod, matchingRule.getMaxCount());
+        
+        if (slot.getCurrentCount() >= slot.getMaxCount()) {
+            throw new IllegalStateException("号源已满");
+        }
+        
+        slot.setCurrentCount(slot.getCurrentCount() + 1);
+        slot.setCurrentQueueNo(slot.getCurrentQueueNo() + 1);
+        slotRepository.save(slot);
+        
+        Integer queueNo = slot.getCurrentQueueNo();
         
         Registration reg = new Registration();
         reg.setRegNo(generateRegNo());
@@ -113,6 +136,32 @@ public class RegistrationService {
         return registrationRepository.save(reg);
     }
     
+    private RegistrationSlot getOrCreateSlotWithLock(Long doctorId, LocalDate date, Integer timePeriod, Integer maxCount) {
+        var slotOpt = slotRepository.findByDoctorIdAndRegDateAndTimePeriodWithLock(doctorId, date, timePeriod);
+        if (slotOpt.isPresent()) {
+            return slotOpt.get();
+        }
+        
+        Integer existingCount = registrationRepository.countByDoctorAndDateAndPeriod(doctorId, date, timePeriod);
+        Integer existingMaxQueueNo = registrationRepository.findMaxQueueNo(doctorId, date, timePeriod);
+        
+        try {
+            RegistrationSlot newSlot = new RegistrationSlot();
+            newSlot.setDoctorId(doctorId);
+            newSlot.setRegDate(date);
+            newSlot.setTimePeriod(timePeriod);
+            newSlot.setMaxCount(maxCount);
+            newSlot.setCurrentCount(existingCount);
+            newSlot.setCurrentQueueNo(existingMaxQueueNo);
+            slotRepository.save(newSlot);
+            slotRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+        }
+        
+        return slotRepository.findByDoctorIdAndRegDateAndTimePeriodWithLock(doctorId, date, timePeriod)
+                .orElseThrow(() -> new IllegalStateException("号源槽位创建失败"));
+    }
+    
     private String generateRegNo() {
         return "REG" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) 
                + System.currentTimeMillis() % 100000;
@@ -124,6 +173,16 @@ public class RegistrationService {
         if (reg.getStatus() != 0) {
             throw new IllegalStateException("只有待就诊状态的挂号才能取消");
         }
+        
+        RegistrationSlot slot = slotRepository.findByDoctorIdAndRegDateAndTimePeriodWithLock(
+                reg.getDoctor().getId(), reg.getRegDate(), reg.getTimePeriod())
+                .orElse(null);
+        
+        if (slot != null && slot.getCurrentCount() > 0) {
+            slot.setCurrentCount(slot.getCurrentCount() - 1);
+            slotRepository.save(slot);
+        }
+        
         reg.setStatus(3);
         reg.setCancelReason(reason);
         registrationRepository.save(reg);
