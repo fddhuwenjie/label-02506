@@ -82,23 +82,27 @@ public class RegistrationService {
         if (timePeriod == null) {
             throw new IllegalArgumentException("时段不能为空");
         }
-        if (hasDuplicateRegistration(patient.getId(), doctor.getId(), date, timePeriod)) {
+
+        int weekDay = date.getDayOfWeek().getValue();
+        List<RegistrationRule> rules = ruleRepository.findByDoctorAndWeekDayAndPeriodForUpdate(doctor.getId(), weekDay, timePeriod);
+
+        if (rules.isEmpty()) {
+            throw new IllegalStateException("该医生该时段没有出诊安排");
+        }
+
+        RegistrationRule rule = rules.get(0);
+
+        Integer count = registrationRepository.countByDoctorAndDateAndPeriod(doctor.getId(), date, timePeriod);
+        if (count >= rule.getMaxCount()) {
+            throw new IllegalStateException("该时段已约满");
+        }
+
+        if (registrationRepository.existsDuplicateActiveRegistration(patient.getId(), doctor.getId(), date, timePeriod)) {
             throw new IllegalStateException("同一病人同一医生同一时段已存在有效挂号");
         }
 
-        int weekDay = date.getDayOfWeek().getValue();
-        List<RegistrationRule> rules = ruleRepository.findByDoctorIdAndWeekDayAndStatus(doctor.getId(), weekDay, 1);
-        
-        BigDecimal fee = BigDecimal.ZERO;
-        for (RegistrationRule rule : rules) {
-            if (rule.getTimePeriod().equals(timePeriod)) {
-                fee = rule.getFee();
-                break;
-            }
-        }
-        
         Integer queueNo = registrationRepository.findMaxQueueNo(doctor.getId(), date, timePeriod) + 1;
-        
+
         Registration reg = new Registration();
         reg.setRegNo(generateRegNo());
         reg.setPatient(patient);
@@ -106,10 +110,10 @@ public class RegistrationService {
         reg.setRegDate(date);
         reg.setTimePeriod(timePeriod);
         reg.setQueueNo(queueNo);
-        reg.setFee(fee);
+        reg.setFee(rule.getFee());
         reg.setStatus(0);
         reg.setSource(source);
-        
+
         return registrationRepository.save(reg);
     }
     
