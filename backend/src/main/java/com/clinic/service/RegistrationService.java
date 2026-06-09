@@ -3,6 +3,7 @@ package com.clinic.service;
 import com.clinic.entity.Registration;
 import com.clinic.entity.RegistrationRule;
 import com.clinic.entity.User;
+import com.clinic.exception.BusinessException;
 import com.clinic.repository.RegistrationRepository;
 import com.clinic.repository.RegistrationRuleRepository;
 import lombok.RequiredArgsConstructor;
@@ -87,18 +88,17 @@ public class RegistrationService {
         }
 
         int weekDay = date.getDayOfWeek().getValue();
-        List<RegistrationRule> rules = ruleRepository.findByDoctorIdAndWeekDayAndStatus(doctor.getId(), weekDay, 1);
-        
-        BigDecimal fee = BigDecimal.ZERO;
-        for (RegistrationRule rule : rules) {
-            if (rule.getTimePeriod().equals(timePeriod)) {
-                fee = rule.getFee();
-                break;
-            }
+
+        RegistrationRule rule = ruleRepository.findByDoctorAndWeekDayAndPeriodWithLock(doctor.getId(), weekDay, timePeriod)
+                .orElseThrow(() -> new BusinessException("该医生此时段暂无排班"));
+
+        Integer currentCount = registrationRepository.countByDoctorAndDateAndPeriod(doctor.getId(), date, timePeriod);
+        if (currentCount >= rule.getMaxCount()) {
+            throw new BusinessException("该时段号源已约满");
         }
-        
+
         Integer queueNo = registrationRepository.findMaxQueueNo(doctor.getId(), date, timePeriod) + 1;
-        
+
         Registration reg = new Registration();
         reg.setRegNo(generateRegNo());
         reg.setPatient(patient);
@@ -106,10 +106,10 @@ public class RegistrationService {
         reg.setRegDate(date);
         reg.setTimePeriod(timePeriod);
         reg.setQueueNo(queueNo);
-        reg.setFee(fee);
+        reg.setFee(rule.getFee());
         reg.setStatus(0);
         reg.setSource(source);
-        
+
         return registrationRepository.save(reg);
     }
     
