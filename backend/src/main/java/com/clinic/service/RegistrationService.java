@@ -87,18 +87,31 @@ public class RegistrationService {
         }
 
         int weekDay = date.getDayOfWeek().getValue();
-        List<RegistrationRule> rules = ruleRepository.findByDoctorIdAndWeekDayAndStatus(doctor.getId(), weekDay, 1);
-        
-        BigDecimal fee = BigDecimal.ZERO;
+        // 对挂号规则行加悲观写锁，将号源校验、排队号生成与挂号插入串行化，
+        // 避免并发挂号导致号源超卖以及排队号重复。
+        List<RegistrationRule> rules = ruleRepository
+                .findByDoctorIdAndWeekDayAndStatusForUpdate(doctor.getId(), weekDay, 1);
+
+        RegistrationRule matchedRule = null;
         for (RegistrationRule rule : rules) {
             if (rule.getTimePeriod().equals(timePeriod)) {
-                fee = rule.getFee();
+                matchedRule = rule;
                 break;
             }
         }
-        
+        if (matchedRule == null) {
+            throw new IllegalStateException("该医生在所选时段没有出诊安排");
+        }
+
+        Integer currentCount = registrationRepository
+                .countByDoctorAndDateAndPeriod(doctor.getId(), date, timePeriod);
+        if (currentCount >= matchedRule.getMaxCount()) {
+            throw new IllegalStateException("该时段已约满");
+        }
+
+        BigDecimal fee = matchedRule.getFee();
         Integer queueNo = registrationRepository.findMaxQueueNo(doctor.getId(), date, timePeriod) + 1;
-        
+
         Registration reg = new Registration();
         reg.setRegNo(generateRegNo());
         reg.setPatient(patient);
@@ -109,7 +122,7 @@ public class RegistrationService {
         reg.setFee(fee);
         reg.setStatus(0);
         reg.setSource(source);
-        
+
         return registrationRepository.save(reg);
     }
     
